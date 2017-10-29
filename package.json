@@ -1,0 +1,29 @@
+{
+  "name": "anipic",
+  "version": "0.0.1",
+  "description": "Animation picture",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha test/**/*.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LoveKino/anipic.git"
+  },
+  "keywords": [
+    "animation",
+    "picture"
+  ],
+  "author": "ddchen",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/LoveKino/anipic/issues"
+  },
+  "homepage": "https://github.com/LoveKino/anipic#readme",
+  "devDependencies": {
+    "mocha": "^4.0.1"
+  },
+  "dependencies": {
+    "kabanery-lumine": "0.0.48"
+  }
+}
