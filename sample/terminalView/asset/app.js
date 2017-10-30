@@ -60,7 +60,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 37);
+/******/ 	return __webpack_require__(__webpack_require__.s = 62);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -296,15 +296,241 @@ module.exports = {
 "use strict";
 
 
+/**
+ * basic types
+ */
+
+let truth = () => true;
+
+let isUndefined = v => v === undefined;
+
+let isNull = v => v === null;
+
+let isFalsy = v => !v;
+
+let likeArray = v => !!(v && typeof v === 'object' && typeof v.length === 'number' && v.length >= 0);
+
+let isArray = v => Array.isArray(v);
+
+let isString = v => typeof v === 'string';
+
+let isObject = v => !!(v && typeof v === 'object');
+
+let isFunction = v => typeof v === 'function';
+
+let isNumber = v => typeof v === 'number' && !isNaN(v);
+
+let isBool = v => typeof v === 'boolean';
+
+let isNode = (o) => {
+    return (
+        typeof Node === 'object' ? o instanceof Node :
+        o && typeof o === 'object' && typeof o.nodeType === 'number' && typeof o.nodeName === 'string'
+    );
+};
+
+let isPromise = v => v && typeof v === 'object' && typeof v.then === 'function' && typeof v.catch === 'function';
+
+let isRegExp = v => v instanceof RegExp;
+
+let isReadableStream = (v) => isObject(v) && isFunction(v.on) && isFunction(v.pipe);
+
+let isWritableStream = v => isObject(v) && isFunction(v.on) && isFunction(v.write);
+
+/**
+ * check type
+ *
+ * types = [typeFun]
+ */
+let funType = (fun, types = []) => {
+    if (!isFunction(fun)) {
+        throw new TypeError(typeErrorText(fun, 'function'));
+    }
+
+    if (!likeArray(types)) {
+        throw new TypeError(typeErrorText(types, 'array'));
+    }
+
+    for (let i = 0; i < types.length; i++) {
+        let typeFun = types[i];
+        if (typeFun) {
+            if (!isFunction(typeFun)) {
+                throw new TypeError(typeErrorText(typeFun, 'function'));
+            }
+        }
+    }
+
+    return function() {
+        // check type
+        for (let i = 0; i < types.length; i++) {
+            let typeFun = types[i];
+            let arg = arguments[i];
+            if (typeFun && !typeFun(arg)) {
+                throw new TypeError(`Argument type error. Arguments order ${i}. Argument is ${arg}. function is ${fun}, args are ${arguments}.`);
+            }
+        }
+        // result
+        return fun.apply(this, arguments);
+    };
+};
+
+let and = (...args) => {
+    if (!any(args, isFunction)) {
+        throw new TypeError('The argument of and must be function.');
+    }
+    return (v) => {
+        for (let i = 0; i < args.length; i++) {
+            let typeFun = args[i];
+            if (!typeFun(v)) {
+                return false;
+            }
+        }
+        return true;
+    };
+};
+
+let or = (...args) => {
+    if (!any(args, isFunction)) {
+        throw new TypeError('The argument of and must be function.');
+    }
+
+    return (v) => {
+        for (let i = 0; i < args.length; i++) {
+            let typeFun = args[i];
+            if (typeFun(v)) {
+                return true;
+            }
+        }
+        return false;
+    };
+};
+
+let not = (type) => {
+    if (!isFunction(type)) {
+        throw new TypeError('The argument of and must be function.');
+    }
+    return (v) => !type(v);
+};
+
+let any = (list, type) => {
+    if (!likeArray(list)) {
+        throw new TypeError(typeErrorText(list, 'list'));
+    }
+    if (!isFunction(type)) {
+        throw new TypeError(typeErrorText(type, 'function'));
+    }
+
+    for (let i = 0; i < list.length; i++) {
+        if (!type(list[i])) {
+            return false;
+        }
+    }
+    return true;
+};
+
+let exist = (list, type) => {
+    if (!likeArray(list)) {
+        throw new TypeError(typeErrorText(list, 'array'));
+    }
+    if (!isFunction(type)) {
+        throw new TypeError(typeErrorText(type, 'function'));
+    }
+
+    for (let i = 0; i < list.length; i++) {
+        if (type(list[i])) {
+            return true;
+        }
+    }
+    return false;
+};
+
+let mapType = (map) => {
+    if (!isObject(map)) {
+        throw new TypeError(typeErrorText(map, 'obj'));
+    }
+
+    for (let name in map) {
+        let type = map[name];
+        if (!isFunction(type)) {
+            throw new TypeError(typeErrorText(type, 'function'));
+        }
+    }
+
+    return (v) => {
+        if (!isObject(v)) {
+            return false;
+        }
+
+        for (let name in map) {
+            let type = map[name];
+            let attr = v[name];
+            if (!type(attr)) {
+                return false;
+            }
+        }
+
+        return true;
+    };
+};
+
+let listType = (type) => {
+    if (!isFunction(type)) {
+        throw new TypeError(typeErrorText(type, 'function'));
+    }
+
+    return (list) => any(list, type);
+};
+
+let typeErrorText = (v, expect) => {
+    return `Expect ${expect} type, but got type ${typeof v}, and value is ${v}`;
+};
+
+module.exports = {
+    isArray,
+    likeArray,
+    isString,
+    isObject,
+    isFunction,
+    isNumber,
+    isBool,
+    isNode,
+    isPromise,
+    isNull,
+    isUndefined,
+    isFalsy,
+    isRegExp,
+    isReadableStream,
+    isWritableStream,
+
+    funType,
+    any,
+    exist,
+
+    and,
+    or,
+    not,
+    mapType,
+    listType,
+    truth
+};
+
+
+/***/ }),
+/* 2 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
 let {
     isObject, funType, or, isString, isFalsy, likeArray
 } = __webpack_require__(0);
 
-let iterate = __webpack_require__(19);
+let iterate = __webpack_require__(34);
 
 let {
     map, reduce, find, findIndex, forEach, filter, any, exist, compact
-} = __webpack_require__(44);
+} = __webpack_require__(69);
 
 let contain = (list, item, fopts) => findIndex(list, item, fopts) !== -1;
 
@@ -400,7 +626,7 @@ module.exports = {
 
 
 /***/ }),
-/* 2 */
+/* 3 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -496,19 +722,129 @@ module.exports = {
 
 
 /***/ }),
-/* 3 */
+/* 4 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-let lumineViewer = __webpack_require__(103);
+let {
+    isObject, funType, or, isString, isFalsy, likeArray
+} = __webpack_require__(1);
+
+let iterate = __webpack_require__(49);
+
+let {
+    map, reduce, find, findIndex, forEach, filter, any, exist, compact
+} = __webpack_require__(149);
+
+let contain = (list, item, fopts) => findIndex(list, item, fopts) !== -1;
+
+let difference = (list1, list2, fopts) => {
+    return reduce(list1, (prev, item) => {
+        if (!contain(list2, item, fopts) &&
+            !contain(prev, item, fopts)) {
+            prev.push(item);
+        }
+        return prev;
+    }, []);
+};
+
+let union = (list1, list2, fopts) => deRepeat(list2, fopts, deRepeat(list1, fopts));
+
+let mergeMap = (map1 = {}, map2 = {}) => reduce(map2, setValueKey, reduce(map1, setValueKey, {}));
+
+let setValueKey = (obj, value, key) => {
+    obj[key] = value;
+    return obj;
+};
+
+let interset = (list1, list2, fopts) => {
+    return reduce(list1, (prev, cur) => {
+        if (contain(list2, cur, fopts)) {
+            prev.push(cur);
+        }
+        return prev;
+    }, []);
+};
+
+let deRepeat = (list, fopts, init = []) => {
+    return reduce(list, (prev, cur) => {
+        if (!contain(prev, cur, fopts)) {
+            prev.push(cur);
+        }
+        return prev;
+    }, init);
+};
+
+/**
+ * a.b.c
+ */
+let get = funType((sandbox, name = '') => {
+    name = name.trim();
+    let parts = !name ? [] : name.split('.');
+    return reduce(parts, getValue, sandbox, invertLogic);
+}, [
+    isObject,
+    or(isString, isFalsy)
+]);
+
+let getValue = (obj, key) => obj[key];
+
+let invertLogic = v => !v;
+
+let delay = (time) => new Promise((resolve) => {
+    setTimeout(resolve, time);
+});
+
+let flat = (list) => {
+    if (likeArray(list) && !isString(list)) {
+        return reduce(list, (prev, item) => {
+            prev = prev.concat(flat(item));
+            return prev;
+        }, []);
+    } else {
+        return [list];
+    }
+};
+
+module.exports = {
+    flat,
+    contain,
+    difference,
+    union,
+    interset,
+    map,
+    reduce,
+    iterate,
+    find,
+    findIndex,
+    deRepeat,
+    forEach,
+    filter,
+    any,
+    exist,
+    get,
+    delay,
+    mergeMap,
+    compact
+};
+
+
+/***/ }),
+/* 5 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+let lumineViewer = __webpack_require__(129);
 
 module.exports = (viewFun, options) => lumineViewer(viewFun)(options);
 
 
 /***/ }),
-/* 4 */
+/* 6 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -517,7 +853,7 @@ module.exports = (viewFun, options) => lumineViewer(viewFun)(options);
 let {
     n,
     parseArgs
-} = __webpack_require__(6);
+} = __webpack_require__(9);
 
 module.exports = (...args) => {
     let tagName = args[0];
@@ -541,7 +877,7 @@ module.exports = (...args) => {
 
 
 /***/ }),
-/* 5 */
+/* 7 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -551,11 +887,11 @@ let {
     isObject, funType, or, isString, isFalsy, likeArray
 } = __webpack_require__(0);
 
-let iterate = __webpack_require__(31);
+let iterate = __webpack_require__(45);
 
 let {
     map, reduce, find, findIndex, forEach, filter, any, exist, compact, reverse, overArgs
-} = __webpack_require__(85);
+} = __webpack_require__(110);
 
 let contain = (list, item, fopts) => findIndex(list, item, fopts) !== -1;
 
@@ -653,13 +989,125 @@ module.exports = {
 
 
 /***/ }),
-/* 6 */
+/* 8 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-module.exports = __webpack_require__(43);
+let {
+    isObject, funType, or, isString, isFalsy, likeArray
+} = __webpack_require__(1);
+
+let iterate = __webpack_require__(60);
+
+let {
+    map, reduce, find, findIndex, forEach, filter, any, exist, compact, reverse, overArgs
+} = __webpack_require__(191);
+
+let contain = (list, item, fopts) => findIndex(list, item, fopts) !== -1;
+
+let difference = (list1, list2, fopts) => {
+    return reduce(list1, (prev, item) => {
+        if (!contain(list2, item, fopts) &&
+            !contain(prev, item, fopts)) {
+            prev.push(item);
+        }
+        return prev;
+    }, []);
+};
+
+let union = (list1, list2, fopts) => deRepeat(list2, fopts, deRepeat(list1, fopts));
+
+let mergeMap = (map1 = {}, map2 = {}) => reduce(map2, setValueKey, reduce(map1, setValueKey, {}));
+
+let setValueKey = (obj, value, key) => {
+    obj[key] = value;
+    return obj;
+};
+
+let interset = (list1, list2, fopts) => {
+    return reduce(list1, (prev, cur) => {
+        if (contain(list2, cur, fopts)) {
+            prev.push(cur);
+        }
+        return prev;
+    }, []);
+};
+
+let deRepeat = (list, fopts, init = []) => {
+    return reduce(list, (prev, cur) => {
+        if (!contain(prev, cur, fopts)) {
+            prev.push(cur);
+        }
+        return prev;
+    }, init);
+};
+
+/**
+ * a.b.c
+ */
+let get = funType((sandbox, name = '') => {
+    name = name.trim();
+    let parts = !name ? [] : name.split('.');
+    return reduce(parts, getValue, sandbox, invertLogic);
+}, [
+    isObject,
+    or(isString, isFalsy)
+]);
+
+let getValue = (obj, key) => obj[key];
+
+let invertLogic = v => !v;
+
+let delay = (time) => new Promise((resolve) => {
+    setTimeout(resolve, time);
+});
+
+let flat = (list) => {
+    if (likeArray(list) && !isString(list)) {
+        return reduce(list, (prev, item) => {
+            prev = prev.concat(flat(item));
+            return prev;
+        }, []);
+    } else {
+        return [list];
+    }
+};
+
+module.exports = {
+    flat,
+    contain,
+    difference,
+    union,
+    interset,
+    map,
+    reduce,
+    iterate,
+    find,
+    findIndex,
+    deRepeat,
+    forEach,
+    filter,
+    any,
+    exist,
+    get,
+    delay,
+    mergeMap,
+    compact,
+    reverse,
+    overArgs
+};
+
+
+/***/ }),
+/* 9 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+module.exports = __webpack_require__(68);
 
 /**
  * @readme-doc
@@ -765,7 +1213,103 @@ module.exports = __webpack_require__(43);
 
 
 /***/ }),
-/* 7 */
+/* 10 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+let styles = (...styleObjects) => {
+    return Object.assign({}, ...styleObjects);
+};
+
+let isMapObject = (v) => {
+    return v && typeof v === 'object' && !Array.isArray(v);
+};
+
+let deepMergeMap = (tar, def, path = '', options = {}) => {
+    let blackList = options.blackList || [];
+    if (blackList.findIndex((item) => item === path) !== -1) {
+        return tar;
+    }
+    if (isMapObject(def)) {
+        tar = tar || {};
+        if (isMapObject(tar)) {
+            for (let name in def) {
+                tar[name] = deepMergeMap(tar[name], def[name], path === '' ? name : path + '.' + name, options);
+            }
+        }
+        return tar;
+    } else {
+        if (tar === undefined) return def;
+        return tar;
+    }
+};
+
+let resolveFnValue = (fn, ...args) => {
+    if (typeof fn === 'function') {
+        return resolveFnValue(fn(...args));
+    }
+
+    return fn;
+};
+
+let get = (obj, key = '') => {
+    key = key.trim();
+    let parts = !key ? [] : key.split('.');
+
+    let partLen = parts.length;
+    for (let i = 0; i < partLen; i++) {
+        let part = parts[i].trim();
+        if (part) {
+            obj = obj[part];
+        }
+    }
+
+    return obj;
+};
+
+let set = (obj, key = '', value) => {
+    key = key.trim();
+    let parts = !key ? [] : key.split('.');
+    if (!parts.length) return;
+    let parent = obj;
+
+    for (let i = 0; i < parts.length - 1; i++) {
+        let part = parts[i];
+        part = part.trim();
+        if (part) {
+            let next = parent[part];
+            if (!isObject(next)) {
+                next = {};
+                parent[part] = next;
+            }
+            parent = next;
+        }
+    }
+
+    parent[parts[parts.length - 1]] = value;
+    return obj;
+};
+
+let isObject = (v) => v && typeof v === 'object';
+
+let likeArray = (v) => v && typeof v === 'object' && typeof v.length === 'number';
+
+module.exports = {
+    styles,
+    isMapObject,
+    deepMergeMap,
+    resolveFnValue,
+    get,
+    set,
+    isObject,
+    likeArray
+};
+
+
+/***/ }),
+/* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -807,7 +1351,119 @@ module.exports = {
 
 
 /***/ }),
-/* 8 */
+/* 12 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+module.exports = __webpack_require__(148);
+
+/**
+ * @readme-doc
+ *
+ * ## features
+ *
+ * - simple DOM DSL, construct dom tree quickly
+ *
+ * - data-driven view, include updating view by data
+ *
+ * - Just functions, easy to compose
+ *
+ * [readme-lang:zh]## 特征
+ *
+ * - 简单的DOM DSL，快速构建DOM结构
+ *
+ * - 数据驱动视图，包括通过数据更新视图
+ *
+ * - 以函数为核心，易于复合
+ *
+ */
+
+/**
+ * @readme-quick-run
+ *
+ * Using method n to construct dom node quickly.
+ *
+ * [readme-lang:zh]用方法n快速构造dom节点
+ *
+ * ## test tar=js r_c=kabanery env=browser
+ * let {n, mount} = kabanery;
+ *
+ * mount(n('div', {
+ *   id: 'qu',
+ *   style: {
+ *      backgroundColor: 'red'
+ *   }
+ * }, [
+ *      n('span class=go style="font-size:16px"', 'hello!')
+ * ]), document.body);
+ *
+ * console.log(document.getElementById('qu').outerHTML); // print result
+ */
+
+/**
+ * @readme-quick-run
+ *
+ * Basic way to construct a view.
+ *
+ * [readme-lang:zh]构造一个组件的简单方法
+ *
+ * ## test tar=js r_c=kabanery env=browser
+ * let {view, n, mount} = kabanery;
+ *
+ * let MyView = view((data) => {
+ *      let {type} = data;
+ *
+ *      return n('div', {
+ *         id: 'test1',
+ *         style: {
+ *            fontSize: 10
+ *         }
+ *      },[
+ *          type === 2 && n('span', 'second'),
+ *          type === 3 && n('div', 'third')
+ *      ]);
+ * });
+ *
+ * mount(MyView({type: 3}), document.body);
+ *
+ * console.log(document.getElementById('test1').outerHTML); // print result
+ */
+
+/**
+ * @readme-quick-run
+ *
+ * Using update api to update a view.
+ *
+ * [readme-lang:zh]运用update api去更新一个view
+ *
+ * ## test tar=js r_c=kabanery env=browser
+ * let {view, n, mount} = kabanery;
+ *
+ * let MyView = view((data, {update}) => {
+ *      return n('div', {
+ *         id: 'a',
+ *         style: {
+ *            fontSize: 10
+ *         },
+ *         onclick: () => {
+ *            update('show', !data.show);
+ *         }
+ *      }, [
+ *          data.show && n('div', 'show text')
+ *      ]);
+ * });
+ *
+ * mount(MyView({show: false}), document.body);
+ *
+ * document.getElementById('a').click(); // simulate user action
+ * console.log(document.getElementById('a').outerHTML); // print result
+ */
+
+
+/***/ }),
+/* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -815,7 +1471,7 @@ module.exports = {
 
 let {
     reduce
-} = __webpack_require__(1);
+} = __webpack_require__(2);
 let {
     funType, isObject, or, isString, isFalsy
 } = __webpack_require__(0);
@@ -963,7 +1619,7 @@ module.exports = {
 
 
 /***/ }),
-/* 9 */
+/* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1006,11 +1662,214 @@ module.exports = {
  * console.log(m('"').type === MATCH);
  *
  **/
-module.exports = __webpack_require__(73);
+module.exports = __webpack_require__(98);
 
 
 /***/ }),
-/* 10 */
+/* 15 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+let {
+    reduce
+} = __webpack_require__(4);
+let {
+    funType, isObject, or, isString, isFalsy
+} = __webpack_require__(1);
+
+let defineProperty = (obj, key, opts) => {
+    if (Object.defineProperty) {
+        Object.defineProperty(obj, key, opts);
+    } else {
+        obj[key] = opts.value;
+    }
+    return obj;
+};
+
+let hasOwnProperty = (obj, key) => {
+    if (obj.hasOwnProperty) {
+        return obj.hasOwnProperty(key);
+    }
+    for (var name in obj) {
+        if (name === key) return true;
+    }
+    return false;
+};
+
+let toArray = (v = []) => Array.prototype.slice.call(v);
+
+/**
+ * a.b.c
+ */
+let get = funType((sandbox, name = '') => {
+    name = name.trim();
+    let parts = !name ? [] : name.split('.');
+    return reduce(parts, getValue, sandbox, invertLogic);
+}, [
+    isObject,
+    or(isString, isFalsy)
+]);
+
+let getValue = (obj, key) => obj[key];
+
+let invertLogic = v => !v;
+
+let set = (sandbox, name = '', value) => {
+    name = name.trim();
+    let parts = !name ? [] : name.split('.');
+    let parent = sandbox;
+    if (!isObject(parent)) return;
+    if (!parts.length) return;
+    for (let i = 0; i < parts.length - 1; i++) {
+        let part = parts[i];
+        parent = parent[part];
+        // avoid exception
+        if (!isObject(parent)) return null;
+    }
+
+    parent[parts[parts.length - 1]] = value;
+    return true;
+};
+
+/**
+ * provide property:
+ *
+ * 1. read props freely
+ *
+ * 2. change props by provide token
+ */
+
+let authProp = (token) => {
+    let set = (obj, key, value) => {
+        let temp = null;
+
+        if (!hasOwnProperty(obj, key)) {
+            defineProperty(obj, key, {
+                enumerable: false,
+                configurable: false,
+                set: (value) => {
+                    if (isObject(value)) {
+                        if (value.token === token) {
+                            // save
+                            temp = value.value;
+                        }
+                    }
+                },
+                get: () => {
+                    return temp;
+                }
+            });
+        }
+
+        setProp(obj, key, value);
+    };
+
+    let setProp = (obj, key, value) => {
+        obj[key] = {
+            token,
+            value
+        };
+    };
+
+    return {
+        set
+    };
+};
+
+let evalCode = (code) => {
+    if (typeof code !== 'string') return code;
+    return eval(`(function(){
+    try {
+        ${code}
+    } catch(err) {
+        console.log('Error happened, when eval code.');
+        throw err;
+    }
+})()`);
+};
+
+let delay = (time) => new Promise((resolve) => {
+    setTimeout(resolve, time);
+});
+
+let runSequence = (list, params = [], context, stopV) => {
+    if (!list.length) {
+        return Promise.resolve();
+    }
+    let fun = list[0];
+    let v = fun && fun.apply(context, params);
+    if (stopV && v === stopV) {
+        return Promise.resolve(stopV);
+    }
+    return Promise.resolve(v).then(() => {
+        return runSequence(list.slice(1), params, context, stopV);
+    });
+};
+
+module.exports = {
+    defineProperty,
+    hasOwnProperty,
+    toArray,
+    get,
+    set,
+    authProp,
+    evalCode,
+    delay,
+    runSequence
+};
+
+
+/***/ }),
+/* 16 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+/**
+ *
+ * @readme-quick-run
+ *
+ * ## test tar=js r_c=FSM
+ *
+ *
+ * let {
+ *     stateGraphDSL, fsm, WAIT, MATCH
+ * } = FSM;
+ *
+ * let {
+ *     g, c, union, range, sequence, circle, left, repeat
+ * } = stateGraphDSL;
+ *
+ * let hexDigit = union(range('0', '9'), range('A', 'F'), range('a', 'f'));
+ *
+ * let escapeSymbols = union('"', '\\', '\/', 'b', 'f', 'n', 'r', 't');
+ *
+ * let stringDFA = g(
+ *     c('"', g('enter',
+ *         c('\\', g(
+ *             c(escapeSymbols, 'enter'),
+ *             c('u',
+ *                 g(repeat(hexDigit, 4, 'enter'))
+ *             ))),
+ *         c('"', 'accept'),
+ *         c(left(), 'enter')
+ *     )));
+ *
+ * let m = fsm(stringDFA);
+ * console.log(m('"').type === WAIT);
+ * console.log(m('a').type === WAIT);
+ * console.log(m('b').type === WAIT);
+ * console.log(m('"').type === MATCH);
+ *
+ **/
+module.exports = __webpack_require__(179);
+
+
+/***/ }),
+/* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1018,14 +1877,14 @@ module.exports = __webpack_require__(73);
 
 let {
     map
-} = __webpack_require__(1);
+} = __webpack_require__(2);
 let {
     isObject, isNode
 } = __webpack_require__(0);
 
-let parseArgs = __webpack_require__(45);
+let parseArgs = __webpack_require__(70);
 
-let parseStyle = __webpack_require__(20);
+let parseStyle = __webpack_require__(35);
 
 const KABANERY_NODE = 'kabanery_node';
 
@@ -1127,13 +1986,13 @@ module.exports = {
 
 
 /***/ }),
-/* 11 */
+/* 18 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-let uuidv4 = __webpack_require__(21);
+let uuidv4 = __webpack_require__(36);
 
 let seed = uuidv4();
 
@@ -1145,7 +2004,34 @@ module.exports = {
 
 
 /***/ }),
-/* 12 */
+/* 19 */
+/***/ (function(module, exports) {
+
+var g;
+
+// This works in non-strict mode
+g = (function() {
+	return this;
+})();
+
+try {
+	// This works if eval is allowed (see CSP)
+	g = g || Function("return this")() || (1,eval)("this");
+} catch(e) {
+	// This works if the window reference is available
+	if(typeof window === "object")
+		g = window;
+}
+
+// g can still be undefined, but nothing to do about it...
+// We return undefined, instead of nothing here, so it's
+// easier to handle this case. if(!global) { ...}
+
+module.exports = g;
+
+
+/***/ }),
+/* 20 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1153,19 +2039,19 @@ module.exports = {
 
 let {
     createElement, createSvgElement
-} = __webpack_require__(55);
+} = __webpack_require__(80);
 
 let {
     bindEvents
-} = __webpack_require__(13);
+} = __webpack_require__(21);
 
 let {
     map
-} = __webpack_require__(1);
+} = __webpack_require__(2);
 
 let {
     isKabaneryNode
-} = __webpack_require__(10);
+} = __webpack_require__(17);
 
 let reduceNode = (node) => {
     if (isKabaneryNode(node)) {
@@ -1187,17 +2073,17 @@ module.exports = reduceNode;
 
 
 /***/ }),
-/* 13 */
+/* 21 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-let EventMatrix = __webpack_require__(56);
+let EventMatrix = __webpack_require__(81);
 
 let {
     eventMapHook
-} = __webpack_require__(11);
+} = __webpack_require__(18);
 
 let {
     listenEventType,
@@ -1224,14 +2110,14 @@ module.exports = {
 
 
 /***/ }),
-/* 14 */
+/* 22 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports = __webpack_require__(70);
+module.exports = __webpack_require__(95);
 
 
 /***/ }),
-/* 15 */
+/* 23 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1245,7 +2131,7 @@ module.exports = {
 
 
 /***/ }),
-/* 16 */
+/* 24 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1253,7 +2139,7 @@ module.exports = {
 
 let {
     reduce
-} = __webpack_require__(5);
+} = __webpack_require__(7);
 
 /**
  *
@@ -1332,7 +2218,7 @@ module.exports = {
 
 
 /***/ }),
-/* 17 */
+/* 25 */
 /***/ (function(module, exports) {
 
 module.exports = {
@@ -1384,15 +2270,382 @@ module.exports = {
 
 
 /***/ }),
-/* 18 */
+/* 26 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-let shadowFrame = __webpack_require__(41);
+let {
+    map
+} = __webpack_require__(4);
+let {
+    isObject, isNode
+} = __webpack_require__(1);
 
-let startMomenter = __webpack_require__(42);
+let parseArgs = __webpack_require__(150);
+
+let parseStyle = __webpack_require__(50);
+
+const KABANERY_NODE = 'kabanery_node';
+
+// TODO general proxy n way
+
+let cn = (elementType) => {
+    return (...args) => {
+        let {
+            tagName, attributes, childs
+        } = parseArgs(args);
+
+        if (isKabaneryNode(attributes)) {
+            childs = [attributes];
+            attributes = {};
+        }
+
+        // plugin
+        runPlugins(attributes['plugin'], tagName, attributes, childs);
+
+        let {
+            attrMap, eventMap
+        } = splitAttribues(attributes);
+
+        return {
+            tagName,
+            attrMap,
+            eventMap,
+            elementType,
+            type: KABANERY_NODE, childNodes: childs,
+        };
+    };
+};
+
+let isKabaneryNode = (v) => isObject(v) && v.type === KABANERY_NODE;
+
+let bindPlugs = (typen, plugs = []) => (...args) => {
+    let {
+        tagName, attributes, childs
+    } = parseArgs(args);
+
+    let oriPlugs = attributes.plugin = attributes.plugin || [];
+    attributes.plugin = oriPlugs.concat(plugs);
+
+    let node = typen(tagName, attributes, childs);
+
+    return node;
+};
+
+let runPlugins = (plugs = [], tagName, attributes, childExp) => {
+    for (let i = 0; i < plugs.length; i++) {
+        let plug = plugs[i];
+        plug && plug(tagName, attributes, childExp);
+    }
+};
+
+let splitAttribues = (attributes) => {
+    let attrMap = {},
+        eventMap = {};
+    for (let name in attributes) {
+        let item = attributes[name];
+        if (name.indexOf('on') === 0) {
+            eventMap[name.substring(2)] = item;
+        } else if (name !== 'plugin') {
+            attrMap[name] = item;
+        }
+    }
+    return {
+        attrMap,
+        eventMap
+    };
+};
+
+// TODO svg
+let toHTML = (node) => {
+    if (isNode(node)) {
+        return node.outerHTML;
+    } else if (isKabaneryNode(node)) {
+        let {
+            tagName, attrMap, childNodes
+        } = node;
+        let attrStr = map(attrMap, (value, key) => `${key}="${value}"`).join(' ');
+        attrStr = attrStr ? ' ' + attrStr : '';
+        return `<${tagName}${attrStr}>${map(childNodes, toHTML).join('')}</${tagName}>`;
+    } else {
+        return node + '';
+    }
+};
+
+module.exports = {
+    n: cn('html'),
+    svgn: cn('svg'),
+    cn,
+    bindPlugs,
+    isKabaneryNode,
+    toHTML,
+    parseArgs,
+    parseStyle
+};
+
+
+/***/ }),
+/* 27 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+let uuidv4 = __webpack_require__(51);
+
+let seed = uuidv4();
+
+module.exports = {
+    eventMapHook: `__eventMap_${seed}`,
+    globalEventTypePrefix: `__event_type_id_${seed}_`,
+    stopPropagationFlag: '__stopPropagation'
+};
+
+
+/***/ }),
+/* 28 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+let {
+    createElement, createSvgElement
+} = __webpack_require__(163);
+
+let {
+    bindEvents
+} = __webpack_require__(29);
+
+let {
+    map
+} = __webpack_require__(4);
+
+let {
+    isKabaneryNode
+} = __webpack_require__(26);
+
+let reduceNode = (node) => {
+    if (isKabaneryNode(node)) {
+        let tarNode = null;
+        if (node.elementType === 'html') {
+            tarNode = createElement(node.tagName, node.attrMap, map(node.childNodes, reduceNode));
+        } else {
+            tarNode = createSvgElement(node.tagName, node.attrMap, map(node.childNodes, reduceNode));
+        }
+
+        bindEvents(tarNode, node.eventMap);
+        return tarNode;
+    } else {
+        return node;
+    }
+};
+
+module.exports = reduceNode;
+
+
+/***/ }),
+/* 29 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+let EventMatrix = __webpack_require__(164);
+
+let {
+    eventMapHook
+} = __webpack_require__(27);
+
+let {
+    listenEventType,
+    clearEvents,
+    attachDocument,
+    dispatchEvent
+} = EventMatrix();
+
+let bindEvents = (node, eventMap) => {
+    // hook event at node
+    node[eventMapHook] = eventMap;
+
+    for (let type in eventMap) {
+        listenEventType(type);
+    }
+};
+
+module.exports = {
+    bindEvents,
+    attachDocument,
+    dispatchEvent,
+    clearEvents
+};
+
+
+/***/ }),
+/* 30 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+module.exports = {
+    WAIT: 2,
+    MATCH: 1,
+    QUIT: 0
+};
+
+
+/***/ }),
+/* 31 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+let {
+    reduce
+} = __webpack_require__(8);
+
+/**
+ *
+ * valide LR(1) item: LR(1) item [A→α.β, a] is valide for prefix ρ=δα, if exists:
+ *      S *⇒ δAω ⇒ δαβω
+ *
+ * inference: if [A→α.Bβ,a] is valide for ρ=δα, and B→θ is a production, then for any b ϵ FIRST(βa), [B→.θ,b] is valide for predix ρ=δα
+ *
+ * LR(1) item: [head, body, dotPosition, [...forward]]
+ *
+ * important: when closure is builded, it's immutable
+ */
+
+let buildClosure = (items, grammer, LR1Grammer) => {
+    let appendedItems = items;
+    let itemsMap = {};
+    let prefixMap = {};
+
+    for (let i = 0; i < items.length; i++) {
+        let item = items[i];
+        itemsMap[item.serialize()] = true;
+        prefixMap[item.serializePrefix()] = item;
+    }
+
+    while (true) { // eslint-disable-line
+        let newAppendedItems = reduce(appendedItems, (prev, item) => {
+            let newItems = LR1Grammer.expandItem(item);
+            return prev.concat(newItems);
+        }, []);
+
+        let noRepeatedNewItems = [];
+
+        for (let i = 0; i < newAppendedItems.length; i++) {
+            let item = newAppendedItems[i];
+            let itemId = item.serialize();
+
+            if (!itemsMap[itemId]) {
+                // add new item
+                noRepeatedNewItems.push(item);
+                itemsMap[item.serialize()] = true;
+                let prefixCacheItem = prefixMap[item.serializePrefix()];
+                if (prefixCacheItem) {
+                    prefixMap[item.serializePrefix()] = prefixCacheItem.concatForwards(item.getForwards());
+                } else {
+                    prefixMap[item.serializePrefix()] = item;
+                }
+            }
+        }
+
+        if (!noRepeatedNewItems.length) break;
+
+        items = items.concat(noRepeatedNewItems);
+        appendedItems = noRepeatedNewItems;
+    }
+
+    let serializedText = JSON.stringify(Object.keys(itemsMap).sort());
+
+    let result = [];
+
+    for (let name in prefixMap) {
+        result.push(prefixMap[name]);
+    }
+
+    return {
+        items: result,
+        serializedText
+    };
+};
+
+let sameClosure = (closure1, closure2) => closure1.serializedText === closure2.serializedText;
+
+module.exports = {
+    buildClosure,
+    sameClosure
+};
+
+
+/***/ }),
+/* 32 */
+/***/ (function(module, exports) {
+
+module.exports = {
+    P_PROGRAM: 'PROGRAM := EXPRESSION_LIST',
+
+    P_EXPRESSION_LIST_0: 'EXPRESSION_LIST := EXPRESSION',
+    P_EXPRESSION_LIST_1: 'EXPRESSION_LIST := EXPRESSION semicolon EXPRESSION_LIST',
+
+    P_EXPRESSION_0: 'EXPRESSION := QUERY_EXPRESSION',
+    P_EXPRESSION_1: 'EXPRESSION := UPDATE_EXPRESSION',
+    P_EXPRESSION_2: 'EXPRESSION := ',
+
+    P_UPDATE_EXPRESSION_0: 'UPDATE_EXPRESSION := PATH assign QUERY_EXPRESSION',
+    P_UPDATE_EXPRESSION_1: 'UPDATE_EXPRESSION := delete PATH',
+    P_UPDATE_EXPRESSION_2: 'UPDATE_EXPRESSION := append PATH assign QUERY_EXPRESSION',
+
+    P_QUERY_EXPRESSION_0: 'QUERY_EXPRESSION := ATOM_DATA',
+    P_QUERY_EXPRESSION_1: 'QUERY_EXPRESSION := variableName',
+    P_QUERY_EXPRESSION_2: 'QUERY_EXPRESSION := PATH',
+    P_QUERY_EXPRESSION_3: 'QUERY_EXPRESSION := variableName leftBracket rightBracket',
+    P_QUERY_EXPRESSION_4: 'QUERY_EXPRESSION := variableName leftBracket QUERY_EXPRESSION_LIST rightBracket',
+
+    P_QUERY_EXPRESSION_LIST_0: 'QUERY_EXPRESSION_LIST := QUERY_EXPRESSION',
+    P_QUERY_EXPRESSION_LIST_1: 'QUERY_EXPRESSION_LIST := QUERY_EXPRESSION comma QUERY_EXPRESSION_LIST',
+
+    P_PATH_0: 'PATH := nodeName',
+    P_PATH_1: 'PATH := nodeName PATH',
+    P_PATH_2: 'PATH := nodeNameVariable',
+    P_PATH_3: 'PATH := nodeNameVariable PATH',
+
+    P_ATOM_DATA_0: 'ATOM_DATA := true',
+    P_ATOM_DATA_1: 'ATOM_DATA := false',
+    P_ATOM_DATA_2: 'ATOM_DATA := null',
+    P_ATOM_DATA_3: 'ATOM_DATA := string',
+    P_ATOM_DATA_4: 'ATOM_DATA := number',
+
+    T_ATOM: 'atom',
+    T_PATH: 'path',
+    T_FUNCTION: 'function',
+    T_VARIABLE_NAME: 'variableName',
+    T_ASSIGN: 'assign',
+    T_DELETE: 'delete',
+    T_APPEND: 'append',
+    T_NODE_NAME: 'nodeName',
+    T_NODE_NAME_VARIABLE: 'nodeNameVariable',
+
+    A_DEFAULT: 'default'
+};
+
+
+/***/ }),
+/* 33 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+let shadowFrame = __webpack_require__(66);
+
+let startMomenter = __webpack_require__(67);
 
 let getX = (elem) => {
     var x = 0;
@@ -1475,7 +2728,7 @@ module.exports = {
 
 
 /***/ }),
-/* 19 */
+/* 34 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1582,7 +2835,7 @@ module.exports = iterate;
 
 
 /***/ }),
-/* 20 */
+/* 35 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1648,11 +2901,11 @@ let convertStyleValue = (value, key) => {
 
 
 /***/ }),
-/* 21 */
+/* 36 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var rng = __webpack_require__(52);
-var bytesToUuid = __webpack_require__(53);
+var rng = __webpack_require__(77);
+var bytesToUuid = __webpack_require__(78);
 
 function v4(options, buf, offset) {
   var i = buf && offset || 0;
@@ -1683,34 +2936,7 @@ module.exports = v4;
 
 
 /***/ }),
-/* 22 */
-/***/ (function(module, exports) {
-
-var g;
-
-// This works in non-strict mode
-g = (function() {
-	return this;
-})();
-
-try {
-	// This works if eval is allowed (see CSP)
-	g = g || Function("return this")() || (1,eval)("this");
-} catch(e) {
-	// This works if the window reference is available
-	if(typeof window === "object")
-		g = window;
-}
-
-// g can still be undefined, but nothing to do about it...
-// We return undefined, instead of nothing here, so it's
-// easier to handle this case. if(!global) { ...}
-
-module.exports = g;
-
-
-/***/ }),
-/* 23 */
+/* 37 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1718,7 +2944,7 @@ module.exports = g;
 
 let {
     attachDocument
-} = __webpack_require__(13);
+} = __webpack_require__(21);
 
 let {
     isNode
@@ -1726,9 +2952,9 @@ let {
 
 let {
     flat, forEach
-} = __webpack_require__(1);
+} = __webpack_require__(2);
 
-let reduceNode = __webpack_require__(12);
+let reduceNode = __webpack_require__(20);
 
 /**
  * @param parentNode
@@ -1757,18 +2983,18 @@ let getDoc = (node) => {
 
 
 /***/ }),
-/* 24 */
+/* 38 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-exports.decode = exports.parse = __webpack_require__(62);
-exports.encode = exports.stringify = __webpack_require__(63);
+exports.decode = exports.parse = __webpack_require__(87);
+exports.encode = exports.stringify = __webpack_require__(88);
 
 
 /***/ }),
-/* 25 */
+/* 39 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1810,11 +3036,11 @@ exports.encode = exports.stringify = __webpack_require__(63);
  * console.log('\n');
  * console.log(tokens3);
  */
-module.exports = __webpack_require__(72);
+module.exports = __webpack_require__(97);
 
 
 /***/ }),
-/* 26 */
+/* 40 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1917,7 +3143,7 @@ module.exports = {
 
 
 /***/ }),
-/* 27 */
+/* 41 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1927,11 +3153,11 @@ let {
     isObject, funType, or, isString, isFalsy, likeArray
 } = __webpack_require__(0);
 
-let iterate = __webpack_require__(28);
+let iterate = __webpack_require__(42);
 
 let {
     map, reduce, find, findIndex, forEach, filter, any, exist, compact, reverse, overArgs
-} = __webpack_require__(77);
+} = __webpack_require__(102);
 
 let contain = (list, item, fopts) => findIndex(list, item, fopts) !== -1;
 
@@ -2029,7 +3255,7 @@ module.exports = {
 
 
 /***/ }),
-/* 28 */
+/* 42 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2175,7 +3401,7 @@ module.exports = {
 
 
 /***/ }),
-/* 29 */
+/* 43 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2195,7 +3421,7 @@ module.exports = {
 
 
 /***/ }),
-/* 30 */
+/* 44 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2209,7 +3435,7 @@ module.exports = {
 
 
 /***/ }),
-/* 31 */
+/* 45 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2355,7 +3581,7 @@ module.exports = {
 
 
 /***/ }),
-/* 32 */
+/* 46 */
 /***/ (function(module, exports) {
 
 let getProductionId = (production) => {
@@ -2400,7 +3626,7 @@ module.exports = {
 
 
 /***/ }),
-/* 33 */
+/* 47 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2413,7 +3639,7 @@ let {
     modifySuccess,
     removeNoneExist,
     removeSuccess
-} = __webpack_require__(96);
+} = __webpack_require__(121);
 
 module.exports = (jsonData, {
     missingValue = undefined
@@ -2477,18 +3703,7 @@ module.exports = (jsonData, {
 
 
 /***/ }),
-/* 34 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-module.exports = {
-    //DO_SAVE_DATA: 'doSaveData'
-}
-
-/***/ }),
-/* 35 */
+/* 48 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2496,7 +3711,7 @@ module.exports = {
 
 let {
     styles
-} = __webpack_require__(2);
+} = __webpack_require__(3);
 
 let container = {
     position: 'relative',
@@ -2545,106 +3760,951 @@ module.exports = {
 
 
 /***/ }),
-/* 36 */
+/* 49 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 let {
-    get,
-    set
-} = __webpack_require__(2);
-
-let {
-    Signal
-} = __webpack_require__(7);
-
-const CHILD_SOURCE_TYPE = 'child';
-
-const identity = v => v;
+    likeArray, isObject, funType, isFunction, isUndefined, or, isNumber, isFalsy, mapType
+} = __webpack_require__(1);
 
 /**
- * binding view with another view's props through a key map
  *
- * keyMap = {
- *    binderKey: bindedKey
- * }
+ * preidcate: chose items to iterate
+ * limit: when to stop iteration
+ * transfer: transfer item
+ * output
  */
+let iterate = funType((domain = [], opts = {}) => {
+    let {
+        predicate, transfer, output, limit, def
+    } = opts;
 
-let syncBindWithKeyMap = (ctx, keyMap, {
-    bindedProps = {},
-    stopSignal,
-    autoUpdate = false,
-    updatedSignalTypes = null,
-    onChildSignal,
-    toBinded = identity,
-    toBinder = identity
-} = {}) => {
-    // TODO check
+    opts.predicate = predicate || truthy;
+    opts.transfer = transfer || id;
+    opts.output = output || toList;
+    if (limit === undefined) limit = domain && domain.length;
+    limit = opts.limit = stopCondition(limit);
 
-    let viewData = ctx.getData();
-    let props = viewData.props;
-    let mappings = [];
-    for (let binderKey in keyMap) {
-        mappings.push([binderKey, keyMap[binderKey]]);
+    let rets = def;
+    let count = 0;
+
+    if (likeArray(domain)) {
+        for (let i = 0; i < domain.length; i++) {
+            let itemRet = iterateItem(domain, i, count, rets, opts);
+            rets = itemRet.rets;
+            count = itemRet.count;
+            if (itemRet.stop) return rets;
+        }
+    } else if (isObject(domain)) {
+        for (let name in domain) {
+            let itemRet = iterateItem(domain, name, count, rets, opts);
+            rets = itemRet.rets;
+            count = itemRet.count;
+            if (itemRet.stop) return rets;
+        }
     }
 
-    let mapedPropsValue = mappings.reduce((prev, [binderKey, bindedKey]) => {
-        let propValue = get(props, binderKey); // get from binder
-        set(prev, bindedKey, toBinded(propValue, binderKey, bindedKey)); // set for binded
-        return prev;
-    }, {});
+    return rets;
+}, [
+    or(isObject, isFunction, isFalsy),
+    or(isUndefined, mapType({
+        predicate: or(isFunction, isFalsy),
+        transfer: or(isFunction, isFalsy),
+        output: or(isFunction, isFalsy),
+        limit: or(isUndefined, isNumber, isFunction)
+    }))
+]);
 
-    let onsignal = (signal, data, sourceCtx) => {
-        // when event happened, sync the data
-        mappings.forEach(([binderKey, bindedKey]) => {
-            let propValue = get(data.props, bindedKey); // get from child
-            set(props, binderKey, toBinder(propValue, binderKey, bindedKey)); // set for parent
-        });
+let iterateItem = (domain, name, count, rets, {
+    predicate, transfer, output, limit
+}) => {
+    let item = domain[name];
+    if (limit(rets, item, name, domain, count)) {
+        // stop
+        return {
+            stop: true,
+            count,
+            rets
+        };
+    }
 
-        // handle the signal if necessary
-        onChildSignal && onChildSignal(signal, data, sourceCtx);
-
-        if (!stopSignal) {
-            // pop up the signal, TODO wrap the sigal to resolve chain
-            ctx.notify(
-                Signal(signal.type, {
-                    sourceType: CHILD_SOURCE_TYPE,
-                    keyMap,
-                    sourceSignal: signal,
-                    sourceData: data,
-                    sourceCtx
-                })
-            );
-        }
-
-        if (autoUpdate) {
-            if (!updatedSignalTypes) {
-                ctx.update(); // update binder view
-            } else {
-                if (updatedSignalTypes.findIndex((type) => type === signal.type) !== -1) {
-                    ctx.update(); // update binder view
-                }
-            }
-        }
+    if (predicate(item)) {
+        rets = output(rets, transfer(item, name, domain, rets), name, domain);
+        count++;
+    }
+    return {
+        stop: false,
+        count,
+        rets
     };
+};
 
-    // construct child props
-    return Object.assign({
-        theme: props.theme // extend theme by default
-    }, bindedProps, mapedPropsValue, {
-        onsignal
+let stopCondition = (limit) => {
+    if (isUndefined(limit)) {
+        return falsy;
+    } else if (isNumber(limit)) {
+        return (rets, item, name, domain, count) => count >= limit;
+    } else {
+        return limit;
+    }
+};
+
+let toList = (prev, v) => {
+    prev.push(v);
+    return prev;
+};
+
+let truthy = () => true;
+
+let falsy = () => false;
+
+let id = v => v;
+
+module.exports = iterate;
+
+
+/***/ }),
+/* 50 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+let {
+    isString,
+    isObject
+} = __webpack_require__(1);
+
+module.exports = (attr = '', {
+    keyWrapper,
+    valueWrapper
+} = {}) => {
+    if (isString(attr)) {
+        return attr;
+    }
+
+    if (!isObject(attr)) {
+        throw new TypeError(`Expect object for style object, but got ${attr}`);
+    }
+    let styles = [];
+    for (let key in attr) {
+        let value = attr[key];
+        key = convertStyleKey(key);
+        value = convertStyleValue(value, key);
+        if (keyWrapper) {
+            key = keyWrapper(key, value);
+        }
+
+        if (valueWrapper) {
+            value = valueWrapper(value, key);
+        }
+
+        styles.push(`${key}: ${value};`);
+    }
+    return styles.join('');
+};
+
+let convertStyleKey = (key) => {
+    return key.replace(/[A-Z]/, (letter) => {
+        return `-${letter.toLowerCase()}`;
     });
 };
 
-module.exports = {
-    syncBindWithKeyMap
+let convertStyleValue = (value, key) => {
+    if (typeof value === 'number' && key !== 'z-index') {
+        return value + 'px';
+    }
+    if (key === 'padding' || key === 'margin') {
+        let parts = value.split(' ');
+        for (let i = 0; i < parts.length; i++) {
+            let part = parts[i];
+            if (!isNaN(Number(part))) {
+                parts[i] = part + 'px';
+            }
+        }
+
+        value = parts.join(' ');
+    }
+    return value;
 };
 
 
 /***/ }),
-/* 37 */
+/* 51 */
+/***/ (function(module, exports, __webpack_require__) {
+
+var rng = __webpack_require__(157);
+var bytesToUuid = __webpack_require__(158);
+
+function v4(options, buf, offset) {
+  var i = buf && offset || 0;
+
+  if (typeof(options) == 'string') {
+    buf = options == 'binary' ? new Array(16) : null;
+    options = null;
+  }
+  options = options || {};
+
+  var rnds = options.random || (options.rng || rng)();
+
+  // Per 4.4, set bits for version and `clock_seq_hi_and_reserved`
+  rnds[6] = (rnds[6] & 0x0f) | 0x40;
+  rnds[8] = (rnds[8] & 0x3f) | 0x80;
+
+  // Copy bytes to buffer, if provided
+  if (buf) {
+    for (var ii = 0; ii < 16; ++ii) {
+      buf[i + ii] = rnds[ii];
+    }
+  }
+
+  return buf || bytesToUuid(rnds);
+}
+
+module.exports = v4;
+
+
+/***/ }),
+/* 52 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+let {
+    attachDocument
+} = __webpack_require__(29);
+
+let {
+    isNode
+} = __webpack_require__(1);
+
+let {
+    flat, forEach
+} = __webpack_require__(4);
+
+let reduceNode = __webpack_require__(28);
+
+/**
+ * @param parentNode
+ *      the dom node used hook node we rendered
+ */
+module.exports = (kabaneryRoots, parentNode) => {
+    kabaneryRoots = flat(kabaneryRoots);
+
+    forEach(kabaneryRoots, (item) => {
+        item = reduceNode(item);
+        if (isNode(item)) {
+            parentNode.appendChild(item);
+        }
+    });
+
+    // attach to document
+    attachDocument(getDoc(parentNode));
+};
+
+let getDoc = (node) => {
+    while (node.parentNode) {
+        node = node.parentNode;
+    }
+    return node;
+};
+
+
+/***/ }),
+/* 53 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+let {
+    styles
+} = __webpack_require__(10);
+
+let container = {
+    position: 'relative',
+    boxSizing: 'border-box',
+    margin: 0,
+    padding: 0,
+    border: 0,
+    borderRadius: 0,
+    overflow: 'auto'
+};
+
+let fullParentHeight = {
+    height: '100%'
+};
+
+let fullParentWidth = {
+    width: '100%'
+};
+
+let fullWindow = styles(container, {
+        position: 'fixed',
+        left: 0,
+        top: 0,
+    },
+    fullParentWidth, fullParentHeight);
+
+let fullParent = styles(container, fullParentWidth, fullParentHeight);
+
+let flat = {
+    appearance: 'none',
+    '-webkit-appearance': 'none',
+    '-moz-appearance': 'none',
+    boxShadow: 'none',
+    borderRadius: 'none',
+    border: 0
+};
+
+module.exports = {
+    fullWindow,
+    fullParent,
+    fullParentWidth,
+    fullParentHeight,
+    container,
+    flat
+};
+
+
+/***/ }),
+/* 54 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+/**
+ *
+ * @readme-quick-run
+ *
+ * ## test tar=js r_c=streamTokenSpliter
+ *
+ * let {
+ *     parser, WAIT, QUIT, MATCH
+ * } = streamTokenSpliter;
+
+ * let spliter = parser([{
+ *     priority: 1,
+ *     match: (prefix) => {
+ *         if (/^\w*$/.test(prefix)) return MATCH;
+ *         return QUIT;
+ *     },
+ *     name: 'word'
+ * }, {
+ *     priority: 0,
+ *     match: (prefix) => {
+ *         if (/^.$/.test(prefix)) return MATCH;
+ *         return QUIT;
+ *     },
+ *     name: 'trash'
+ * }]);
+ *
+ * let tokens1 = spliter('today=is __'); // chunk1
+ * let tokens2 = spliter('a good day'); // chunk2
+ * let tokens3 = spliter(null); // null means end of stream
+ *
+ * console.log(tokens1);
+ * console.log('\n');
+ * console.log(tokens2);
+ * console.log('\n');
+ * console.log(tokens3);
+ */
+module.exports = __webpack_require__(178);
+
+
+/***/ }),
+/* 55 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+let {
+    isObject
+} = __webpack_require__(1);
+
+/**
+ * basic action types and compose actions
+ *
+ * action = {
+ *   actionType
+ * }
+ */
+
+const __basic_action_type__ = '7e942534-ea8b-4c75-90fd-705aec328d00';
+
+const LEFT_TYPE = 'left',
+    RANGE_TYPE = 'range',
+    UNION_TYPE = 'union',
+    NORMAL_TYPE = 'normal',
+    EPSILON_TYPE = 'epsilon';
+
+let toAction = (v) => {
+    if (isAction(v)) return v;
+    if (v === null) return {
+        content: v,
+        actionType: EPSILON_TYPE,
+        __basic_action_type__
+
+    };
+    return {
+        content: v,
+        actionType: NORMAL_TYPE,
+        __basic_action_type__
+    };
+};
+
+let left = () => {
+    return {
+        actionType: LEFT_TYPE,
+        __basic_action_type__
+    };
+};
+
+let range = (start, end) => {
+    return {
+        actionType: RANGE_TYPE,
+        start,
+        end,
+        __basic_action_type__
+    };
+};
+
+// union two actions to get a new action
+let union = (...actions) => {
+    for (let i = 0; i < actions.length; i++) {
+        let action = actions[i];
+        if (!isAction(action)) {
+            actions[i] = toAction(action);
+        }
+    }
+
+    return {
+        actionType: UNION_TYPE,
+        actions,
+        __basic_action_type__
+    };
+};
+
+let isAction = (v) => {
+    return isObject(v) && v.__basic_action_type__ === __basic_action_type__;
+};
+
+let isLeftAction = (v) => isAction(v) && v.actionType === LEFT_TYPE;
+
+let isRangeAction = (v) => isAction(v) && v.actionType === RANGE_TYPE;
+
+let isUnionAction = (v) => isAction(v) && v.actionType === UNION_TYPE;
+
+let isNormalAction = (v) => isAction(v) && v.actionType === NORMAL_TYPE;
+
+let isEpsilonAction = (v) => isAction(v) && v.actionType === EPSILON_TYPE;
+
+module.exports = {
+    isAction,
+    isLeftAction,
+    isRangeAction,
+    isUnionAction,
+    isNormalAction,
+    isEpsilonAction,
+
+    left,
+    range,
+    toAction,
+    union
+};
+
+
+/***/ }),
+/* 56 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+let {
+    isObject, funType, or, isString, isFalsy, likeArray
+} = __webpack_require__(1);
+
+let iterate = __webpack_require__(57);
+
+let {
+    map, reduce, find, findIndex, forEach, filter, any, exist, compact, reverse, overArgs
+} = __webpack_require__(183);
+
+let contain = (list, item, fopts) => findIndex(list, item, fopts) !== -1;
+
+let difference = (list1, list2, fopts) => {
+    return reduce(list1, (prev, item) => {
+        if (!contain(list2, item, fopts) &&
+            !contain(prev, item, fopts)) {
+            prev.push(item);
+        }
+        return prev;
+    }, []);
+};
+
+let union = (list1, list2, fopts) => deRepeat(list2, fopts, deRepeat(list1, fopts));
+
+let mergeMap = (map1 = {}, map2 = {}) => reduce(map2, setValueKey, reduce(map1, setValueKey, {}));
+
+let setValueKey = (obj, value, key) => {
+    obj[key] = value;
+    return obj;
+};
+
+let interset = (list1, list2, fopts) => {
+    return reduce(list1, (prev, cur) => {
+        if (contain(list2, cur, fopts)) {
+            prev.push(cur);
+        }
+        return prev;
+    }, []);
+};
+
+let deRepeat = (list, fopts, init = []) => {
+    return reduce(list, (prev, cur) => {
+        if (!contain(prev, cur, fopts)) {
+            prev.push(cur);
+        }
+        return prev;
+    }, init);
+};
+
+/**
+ * a.b.c
+ */
+let get = funType((sandbox, name = '') => {
+    name = name.trim();
+    let parts = !name ? [] : name.split('.');
+    return reduce(parts, getValue, sandbox, invertLogic);
+}, [
+    isObject,
+    or(isString, isFalsy)
+]);
+
+let getValue = (obj, key) => obj[key];
+
+let invertLogic = v => !v;
+
+let delay = (time) => new Promise((resolve) => {
+    setTimeout(resolve, time);
+});
+
+let flat = (list) => {
+    if (likeArray(list) && !isString(list)) {
+        return reduce(list, (prev, item) => {
+            prev = prev.concat(flat(item));
+            return prev;
+        }, []);
+    } else {
+        return [list];
+    }
+};
+
+module.exports = {
+    flat,
+    contain,
+    difference,
+    union,
+    interset,
+    map,
+    reduce,
+    iterate,
+    find,
+    findIndex,
+    deRepeat,
+    forEach,
+    filter,
+    any,
+    exist,
+    get,
+    delay,
+    mergeMap,
+    compact,
+    reverse,
+    overArgs
+};
+
+
+/***/ }),
+/* 57 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+let {
+    isPromise, likeArray, isObject, funType, isFunction, isUndefined, or, isNumber, isFalsy, isReadableStream, mapType
+} = __webpack_require__(1);
+
+/**
+ * @param opts
+ *      preidcate: chose items to iterate
+ *      limit: when to stop iteration
+ *      transfer: transfer item
+ *      output
+ *      def: default result
+ */
+let iterate = funType((domain, opts = {}) => {
+    domain = domain || [];
+    if (isPromise(domain)) {
+        return domain.then(list => {
+            return iterate(list, opts);
+        });
+    }
+    return iterateList(domain, opts);
+}, [
+    or(isPromise, isObject, isFunction, isFalsy),
+    or(isUndefined, mapType({
+        predicate: or(isFunction, isFalsy),
+        transfer: or(isFunction, isFalsy),
+        output: or(isFunction, isFalsy),
+        limit: or(isUndefined, isNumber, isFunction)
+    }))
+]);
+
+let iterateList = (domain, opts) => {
+    opts = initOpts(opts, domain);
+
+    let rets = opts.def;
+    let count = 0; // iteration times
+
+    if (isReadableStream(domain)) {
+        let index = -1;
+
+        return new Promise((resolve, reject) => {
+            domain.on('data', (chunk) => {
+                // TODO try cache error
+                let itemRet = iterateItem(chunk, domain, ++index, count, rets, opts);
+                rets = itemRet.rets;
+                count = itemRet.count;
+                if (itemRet.stop) {
+                    resolve(rets);
+                }
+            });
+            domain.on('end', () => {
+                resolve(rets);
+            });
+            domain.on('error', (err) => {
+                reject(err);
+            });
+        });
+    } else if (likeArray(domain)) {
+        for (let i = 0; i < domain.length; i++) {
+            let item = domain[i];
+            let itemRet = iterateItem(item, domain, i, count, rets, opts);
+            rets = itemRet.rets;
+            count = itemRet.count;
+            if (itemRet.stop) return rets;
+        }
+    } else if (isObject(domain)) {
+        for (let name in domain) {
+            let item = domain[name];
+            let itemRet = iterateItem(item, domain, name, count, rets, opts);
+            rets = itemRet.rets;
+            count = itemRet.count;
+            if (itemRet.stop) return rets;
+        }
+    }
+
+    return rets;
+};
+
+let initOpts = (opts, domain) => {
+    let {
+        predicate, transfer, output, limit
+    } = opts;
+
+    opts.predicate = predicate || truthy;
+    opts.transfer = transfer || id;
+    opts.output = output || toList;
+    if (limit === undefined) limit = domain && domain.length;
+    limit = opts.limit = stopCondition(limit);
+    return opts;
+};
+
+let iterateItem = (item, domain, name, count, rets, {
+    predicate, transfer, output, limit
+}) => {
+    if (limit(rets, item, name, domain, count)) {
+        // stop
+        return {
+            stop: true,
+            count,
+            rets
+        };
+    }
+
+    if (predicate(item)) {
+        rets = output(rets, transfer(item, name, domain, rets), name, domain);
+        count++;
+    }
+    return {
+        stop: false,
+        count,
+        rets
+    };
+};
+
+let stopCondition = (limit) => {
+    if (isUndefined(limit)) {
+        return falsy;
+    } else if (isNumber(limit)) {
+        return (rets, item, name, domain, count) => count >= limit;
+    } else {
+        return limit;
+    }
+};
+
+let toList = (prev, v) => {
+    prev.push(v);
+    return prev;
+};
+
+let truthy = () => true;
+
+let falsy = () => false;
+
+let id = v => v;
+
+module.exports = {
+    iterate
+};
+
+
+/***/ }),
+/* 58 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+let assembleToken = (tokenType, prefix) => {
+    return {
+        tokenType,
+        name: tokenType.name,
+        text: prefix
+    };
+};
+
+module.exports = {
+    assembleToken
+};
+
+
+/***/ }),
+/* 59 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+module.exports = {
+    END_SYMBOL: '$',
+    EXPAND_START_SYMBOL: 'S`',
+    EPSILON: null
+};
+
+
+/***/ }),
+/* 60 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+let {
+    isPromise, likeArray, isObject, funType, isFunction, isUndefined, or, isNumber, isFalsy, isReadableStream, mapType
+} = __webpack_require__(1);
+
+/**
+ * @param opts
+ *      preidcate: chose items to iterate
+ *      limit: when to stop iteration
+ *      transfer: transfer item
+ *      output
+ *      def: default result
+ */
+let iterate = funType((domain, opts = {}) => {
+    domain = domain || [];
+    if (isPromise(domain)) {
+        return domain.then(list => {
+            return iterate(list, opts);
+        });
+    }
+    return iterateList(domain, opts);
+}, [
+    or(isPromise, isObject, isFunction, isFalsy),
+    or(isUndefined, mapType({
+        predicate: or(isFunction, isFalsy),
+        transfer: or(isFunction, isFalsy),
+        output: or(isFunction, isFalsy),
+        limit: or(isUndefined, isNumber, isFunction)
+    }))
+]);
+
+let iterateList = (domain, opts) => {
+    opts = initOpts(opts, domain);
+
+    let rets = opts.def;
+    let count = 0; // iteration times
+
+    if (isReadableStream(domain)) {
+        let index = -1;
+
+        return new Promise((resolve, reject) => {
+            domain.on('data', (chunk) => {
+                // TODO try cache error
+                let itemRet = iterateItem(chunk, domain, ++index, count, rets, opts);
+                rets = itemRet.rets;
+                count = itemRet.count;
+                if (itemRet.stop) {
+                    resolve(rets);
+                }
+            });
+            domain.on('end', () => {
+                resolve(rets);
+            });
+            domain.on('error', (err) => {
+                reject(err);
+            });
+        });
+    } else if (likeArray(domain)) {
+        for (let i = 0; i < domain.length; i++) {
+            let item = domain[i];
+            let itemRet = iterateItem(item, domain, i, count, rets, opts);
+            rets = itemRet.rets;
+            count = itemRet.count;
+            if (itemRet.stop) return rets;
+        }
+    } else if (isObject(domain)) {
+        for (let name in domain) {
+            let item = domain[name];
+            let itemRet = iterateItem(item, domain, name, count, rets, opts);
+            rets = itemRet.rets;
+            count = itemRet.count;
+            if (itemRet.stop) return rets;
+        }
+    }
+
+    return rets;
+};
+
+let initOpts = (opts, domain) => {
+    let {
+        predicate, transfer, output, limit
+    } = opts;
+
+    opts.predicate = predicate || truthy;
+    opts.transfer = transfer || id;
+    opts.output = output || toList;
+    if (limit === undefined) limit = domain && domain.length;
+    limit = opts.limit = stopCondition(limit);
+    return opts;
+};
+
+let iterateItem = (item, domain, name, count, rets, {
+    predicate, transfer, output, limit
+}) => {
+    if (limit(rets, item, name, domain, count)) {
+        // stop
+        return {
+            stop: true,
+            count,
+            rets
+        };
+    }
+
+    if (predicate(item)) {
+        rets = output(rets, transfer(item, name, domain, rets), name, domain);
+        count++;
+    }
+    return {
+        stop: false,
+        count,
+        rets
+    };
+};
+
+let stopCondition = (limit) => {
+    if (isUndefined(limit)) {
+        return falsy;
+    } else if (isNumber(limit)) {
+        return (rets, item, name, domain, count) => count >= limit;
+    } else {
+        return limit;
+    }
+};
+
+let toList = (prev, v) => {
+    prev.push(v);
+    return prev;
+};
+
+let truthy = () => true;
+
+let falsy = () => false;
+
+let id = v => v;
+
+module.exports = {
+    iterate
+};
+
+
+/***/ }),
+/* 61 */
+/***/ (function(module, exports) {
+
+let getProductionId = (production) => {
+    return `${production[0]} := ${production[1].join(' ')}`;
+};
+
+// ignore whitespace
+let processTokens = (rawTokens) => {
+    let tokens = [];
+    for (let i = 0; i < rawTokens.length; i++) {
+        let {
+            text,
+            tokenType
+        } = rawTokens[i];
+
+        let name = tokenType.name;
+
+        if (name !== 'whitespace') { // ignore white space
+            tokens.push({
+                text,
+                name
+            });
+        }
+    }
+
+    return tokens;
+};
+
+let isObject = v => v && typeof v === 'object';
+
+let isFunction = v => typeof v === 'function';
+
+let isString = v => typeof v === 'string';
+
+module.exports = {
+    getProductionId,
+    processTokens,
+    isObject,
+    isFunction,
+    isString
+};
+
+
+/***/ }),
+/* 62 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2652,10 +4712,9 @@ module.exports = {
 
 let {
     SPA
-} = __webpack_require__(38);
-let pageSignalActionMap = __webpack_require__(98);
-let pageViewMap = __webpack_require__(100);
-
+} = __webpack_require__(63);
+let pageSignalActionMap = __webpack_require__(123);
+let pageViewMap = __webpack_require__(126);
 
 SPA({
     
@@ -2670,20 +4729,21 @@ SPA({
     defaultPage: 'indexPage'
 });
 
+
 /***/ }),
-/* 38 */
+/* 63 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-let {router, queryPager} = __webpack_require__(39);
-let {mount} = __webpack_require__(6);
-let n = __webpack_require__(4);
-let pfcApis = __webpack_require__(64);
-let {signalActionFlow} = __webpack_require__(68);
-let {Signal} = __webpack_require__(7);
-let {wrapPagePropsWithStore} = __webpack_require__(97);
+let {router, queryPager} = __webpack_require__(64);
+let {mount} = __webpack_require__(9);
+let n = __webpack_require__(6);
+let pfcApis = __webpack_require__(89);
+let {signalActionFlow} = __webpack_require__(93);
+let {Signal} = __webpack_require__(11);
+let {wrapPagePropsWithStore} = __webpack_require__(122);
 
 const PAGE_RENDER_SIGNAL = 'kabanery_page_render';
 
@@ -2759,13 +4819,13 @@ module.exports = {
 
 
 /***/ }),
-/* 39 */
+/* 64 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-module.exports = __webpack_require__(40);
+module.exports = __webpack_require__(65);
 
 /**
  * @readme-quick-run
@@ -2802,7 +4862,7 @@ module.exports = __webpack_require__(40);
 
 
 /***/ }),
-/* 40 */
+/* 65 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2810,15 +4870,15 @@ module.exports = __webpack_require__(40);
 
 let {
     removeChilds
-} = __webpack_require__(18);
+} = __webpack_require__(33);
 
 let {
     mount
-} = __webpack_require__(6);
+} = __webpack_require__(9);
 
 let {
     parse
-} = __webpack_require__(58);
+} = __webpack_require__(83);
 
 const SINGLE_JUMP_PREFIX = 'single://';
 
@@ -3000,7 +5060,7 @@ module.exports = {
 
 
 /***/ }),
-/* 41 */
+/* 66 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3055,7 +5115,7 @@ module.exports = shadowFrame;
 
 
 /***/ }),
-/* 42 */
+/* 67 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3111,7 +5171,7 @@ module.exports = startMomenter;
 
 
 /***/ }),
-/* 43 */
+/* 68 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3126,22 +5186,22 @@ let {
     isKabaneryNode,
     cn,
     parseStyle
-} = __webpack_require__(10);
+} = __webpack_require__(17);
 
-let plugs = __webpack_require__(47);
+let plugs = __webpack_require__(72);
 
-let view = __webpack_require__(50);
+let view = __webpack_require__(75);
 
-let mount = __webpack_require__(23);
+let mount = __webpack_require__(37);
 
-let N = __webpack_require__(57);
+let N = __webpack_require__(82);
 
-let reduceNode = __webpack_require__(12);
+let reduceNode = __webpack_require__(20);
 
 let {
     dispatchEvent,
     clearEvents
-} = __webpack_require__(13);
+} = __webpack_require__(21);
 
 module.exports = {
     n,
@@ -3164,13 +5224,13 @@ module.exports = {
 
 
 /***/ }),
-/* 44 */
+/* 69 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-let iterate = __webpack_require__(19);
+let iterate = __webpack_require__(34);
 
 let defauls = {
     eq: (v1, v2) => v1 === v2
@@ -3269,13 +5329,13 @@ module.exports = {
 
 
 /***/ }),
-/* 45 */
+/* 70 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-let parseAttribute = __webpack_require__(46);
+let parseAttribute = __webpack_require__(71);
 
 let {
     isString,
@@ -3366,7 +5426,7 @@ module.exports = parseArgs;
 
 
 /***/ }),
-/* 46 */
+/* 71 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3376,11 +5436,11 @@ let {
     isString
 } = __webpack_require__(0);
 
-let parseStyle = __webpack_require__(20);
+let parseStyle = __webpack_require__(35);
 
 let {
     mergeMap
-} = __webpack_require__(1);
+} = __webpack_require__(2);
 
 const ITEM_REG = /([\w-]+)\s*=\s*(([\w-]+)|('.*?')|(".*?"))/;
 
@@ -3440,14 +5500,14 @@ module.exports = parseAttribute;
 
 
 /***/ }),
-/* 47 */
+/* 72 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-let twowaybinding = __webpack_require__(48);
-let eventError = __webpack_require__(49);
+let twowaybinding = __webpack_require__(73);
+let eventError = __webpack_require__(74);
 
 module.exports = {
     twowaybinding,
@@ -3456,7 +5516,7 @@ module.exports = {
 
 
 /***/ }),
-/* 48 */
+/* 73 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3464,7 +5524,7 @@ module.exports = {
 
 let {
     get, set
-} = __webpack_require__(8);
+} = __webpack_require__(13);
 
 module.exports = (obj, path) => (tagName, attributes, childExp) => {
     let value = get(obj, path, '');
@@ -3483,7 +5543,7 @@ module.exports = (obj, path) => (tagName, attributes, childExp) => {
 
 
 /***/ }),
-/* 49 */
+/* 74 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3515,7 +5575,7 @@ let wrapEventHandler = (fun, catcher) => {
 
 
 /***/ }),
-/* 50 */
+/* 75 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3523,7 +5583,7 @@ let wrapEventHandler = (fun, catcher) => {
 
 let {
     set
-} = __webpack_require__(8);
+} = __webpack_require__(13);
 
 let {
     isObject,
@@ -3533,13 +5593,13 @@ let {
 
 let {
     forEach
-} = __webpack_require__(1);
+} = __webpack_require__(2);
 
-let replace = __webpack_require__(51);
+let replace = __webpack_require__(76);
 
-let reduceNode = __webpack_require__(12);
+let reduceNode = __webpack_require__(20);
 
-let mount = __webpack_require__(23);
+let mount = __webpack_require__(37);
 
 /**
  * render function: (data) => node
@@ -3734,7 +5794,7 @@ module.exports = View;
 
 
 /***/ }),
-/* 51 */
+/* 76 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3742,7 +5802,7 @@ module.exports = View;
 
 let {
     toArray
-} = __webpack_require__(8);
+} = __webpack_require__(13);
 
 let {
     isNode
@@ -3750,13 +5810,13 @@ let {
 
 let {
     forEach
-} = __webpack_require__(1);
+} = __webpack_require__(2);
 
 let {
     eventMapHook
-} = __webpack_require__(11);
+} = __webpack_require__(18);
 
-let applyAttibutes = __webpack_require__(54);
+let applyAttibutes = __webpack_require__(79);
 
 let replaceDirectly = (node, newNode) => {
     let parent = node.parentNode;
@@ -3878,7 +5938,7 @@ module.exports = (node, newNode) => {
 
 
 /***/ }),
-/* 52 */
+/* 77 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(global) {// Unique ID creation requires a high quality random # generator.  In the
@@ -3915,10 +5975,10 @@ if (!rng) {
 
 module.exports = rng;
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(22)))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(19)))
 
 /***/ }),
-/* 53 */
+/* 78 */
 /***/ (function(module, exports) {
 
 /**
@@ -3947,7 +6007,7 @@ module.exports = bytesToUuid;
 
 
 /***/ }),
-/* 54 */
+/* 79 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3955,15 +6015,15 @@ module.exports = bytesToUuid;
 
 let {
     getAttributeMap
-} = __webpack_require__(18);
+} = __webpack_require__(33);
 
 let {
     hasOwnProperty
-} = __webpack_require__(8);
+} = __webpack_require__(13);
 
 let {
     forEach
-} = __webpack_require__(1);
+} = __webpack_require__(2);
 
 let applyAttibutes = (node, newNode) => {
     // attributes
@@ -3994,7 +6054,7 @@ module.exports = applyAttibutes;
 
 
 /***/ }),
-/* 55 */
+/* 80 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -4041,7 +6101,7 @@ module.exports = {
 
 
 /***/ }),
-/* 56 */
+/* 81 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -4049,13 +6109,13 @@ module.exports = {
 
 let {
     contain
-} = __webpack_require__(1);
+} = __webpack_require__(2);
 
 let {
     eventMapHook,
     globalEventTypePrefix,
     stopPropagationFlag
-} = __webpack_require__(11);
+} = __webpack_require__(18);
 
 module.exports = () => {
     let docs = [];
@@ -4197,7 +6257,7 @@ let getGlobalEventTypeId = (type) => `${globalEventTypePrefix}${type}`;
 
 
 /***/ }),
-/* 57 */
+/* 82 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -4205,7 +6265,7 @@ let getGlobalEventTypeId = (type) => `${globalEventTypePrefix}${type}`;
 
 let {
     n
-} = __webpack_require__(10);
+} = __webpack_require__(17);
 
 let {
     isArray, isFunction, isObject
@@ -4213,7 +6273,7 @@ let {
 
 let {
     map
-} = __webpack_require__(1);
+} = __webpack_require__(2);
 
 module.exports = (...args) => {
     let tagName = args[0],
@@ -4253,7 +6313,7 @@ module.exports = (...args) => {
 
 
 /***/ }),
-/* 58 */
+/* 83 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -4280,8 +6340,8 @@ module.exports = (...args) => {
 
 
 
-var punycode = __webpack_require__(59);
-var util = __webpack_require__(61);
+var punycode = __webpack_require__(84);
+var util = __webpack_require__(86);
 
 exports.parse = urlParse;
 exports.resolve = urlResolve;
@@ -4356,7 +6416,7 @@ var protocolPattern = /^([a-z0-9.+-]+:)/i,
       'gopher:': true,
       'file:': true
     },
-    querystring = __webpack_require__(24);
+    querystring = __webpack_require__(38);
 
 function urlParse(url, parseQueryString, slashesDenoteHost) {
   if (url && util.isObject(url) && url instanceof Url) return url;
@@ -4992,7 +7052,7 @@ Url.prototype.parseHost = function() {
 
 
 /***/ }),
-/* 59 */
+/* 84 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(module, global) {var __WEBPACK_AMD_DEFINE_RESULT__;/*! https://mths.be/punycode v1.4.1 by @mathias */
@@ -5528,10 +7588,10 @@ Url.prototype.parseHost = function() {
 
 }(this));
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(60)(module), __webpack_require__(22)))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(85)(module), __webpack_require__(19)))
 
 /***/ }),
-/* 60 */
+/* 85 */
 /***/ (function(module, exports) {
 
 module.exports = function(module) {
@@ -5559,7 +7619,7 @@ module.exports = function(module) {
 
 
 /***/ }),
-/* 61 */
+/* 86 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5582,7 +7642,7 @@ module.exports = {
 
 
 /***/ }),
-/* 62 */
+/* 87 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5673,7 +7733,7 @@ var isArray = Array.isArray || function (xs) {
 
 
 /***/ }),
-/* 63 */
+/* 88 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5765,14 +7825,14 @@ var objectKeys = Object.keys || function (obj) {
 
 
 /***/ }),
-/* 64 */
+/* 89 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-let stubAsApis = __webpack_require__(65);
-let pfcRequestor = __webpack_require__(67);
+let stubAsApis = __webpack_require__(90);
+let pfcRequestor = __webpack_require__(92);
 
 module.exports = (apiPath, stub) => {
     let pfcRequest = pfcRequestor(apiPath);
@@ -5831,7 +7891,7 @@ let isLazyFun = (f) => {
 
 
 /***/ }),
-/* 65 */
+/* 90 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5840,7 +7900,7 @@ let isLazyFun = (f) => {
 let {
     isObject,
     isFunction
-} = __webpack_require__(66);
+} = __webpack_require__(91);
 
 /**
  * we got stub and use it as apis to ccontruct pfc code
@@ -5926,7 +7986,7 @@ let serializeAtom = (atom) => {
 
 
 /***/ }),
-/* 66 */
+/* 91 */
 /***/ (function(module, exports) {
 
 // ignore whitespace
@@ -5967,7 +8027,7 @@ module.exports = {
 
 
 /***/ }),
-/* 67 */
+/* 92 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6005,7 +8065,7 @@ module.exports = requestor;
 
 
 /***/ }),
-/* 68 */
+/* 93 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6016,7 +8076,7 @@ let {
     signalSendRequestRunner,
     responseUpdateStateRunner,
     responseErrorRunner
-} = __webpack_require__(69);
+} = __webpack_require__(94);
 
 /**
  * action flow
@@ -6155,7 +8215,7 @@ module.exports = {
 
 
 /***/ }),
-/* 69 */
+/* 94 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6165,8 +8225,8 @@ let {
     parseStrToAst,
     checkAST,
     executeAST
-} = __webpack_require__(14);
-let JsonTree = __webpack_require__(33);
+} = __webpack_require__(22);
+let JsonTree = __webpack_require__(47);
 
 /**
  *
@@ -6282,18 +8342,18 @@ module.exports = {
 
 
 /***/ }),
-/* 70 */
+/* 95 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-let parser = __webpack_require__(71);
+let parser = __webpack_require__(96);
 let {
     checkAST,
     runTimeCheck,
     getVariable
-} = __webpack_require__(95);
+} = __webpack_require__(120);
 
 let {
     T_ATOM,
@@ -6305,7 +8365,7 @@ let {
     T_FUNCTION,
     T_NODE_NAME,
     T_NODE_NAME_VARIABLE
-} = __webpack_require__(17);
+} = __webpack_require__(25);
 
 let executeAST = (ast, {
     queryByPath,
@@ -6451,25 +8511,25 @@ module.exports = {
 
 
 /***/ }),
-/* 71 */
+/* 96 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-let streamTokenSpliter = __webpack_require__(25);
+let streamTokenSpliter = __webpack_require__(39);
 let {
     LR
-} = __webpack_require__(81);
+} = __webpack_require__(106);
 let {
     getProductionId,
     processTokens,
-} = __webpack_require__(32);
-let tokenTypes = __webpack_require__(92);
+} = __webpack_require__(46);
+let tokenTypes = __webpack_require__(117);
 let {
     ACTION,
     GOTO
-} = __webpack_require__(94);
+} = __webpack_require__(119);
 
 let {
     P_PROGRAM,
@@ -6514,7 +8574,7 @@ let {
     T_FUNCTION,
     T_NODE_NAME,
     T_NODE_NAME_VARIABLE
-} = __webpack_require__(17);
+} = __webpack_require__(25);
 
 module.exports = () => {
     let tokenSpliter = streamTokenSpliter.parser(tokenTypes);
@@ -6721,7 +8781,7 @@ module.exports = () => {
 
 
 /***/ }),
-/* 72 */
+/* 97 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6733,30 +8793,30 @@ let {
 
 let {
     WAIT, MATCH, QUIT
-} = __webpack_require__(15);
+} = __webpack_require__(23);
 
 let {
     stateGraphDSL
-} = __webpack_require__(9);
+} = __webpack_require__(14);
 
-let buildFSM = __webpack_require__(78);
+let buildFSM = __webpack_require__(103);
 
 let {
     map
-} = __webpack_require__(1);
+} = __webpack_require__(2);
 
 let {
     getMatch
-} = __webpack_require__(79);
+} = __webpack_require__(104);
 
 let {
     findToken,
     filterTypes
-} = __webpack_require__(80);
+} = __webpack_require__(105);
 
 let {
     assembleToken
-} = __webpack_require__(29);
+} = __webpack_require__(43);
 
 /**
  *
@@ -6990,7 +9050,7 @@ module.exports = {
 
 
 /***/ }),
-/* 73 */
+/* 98 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6998,9 +9058,9 @@ module.exports = {
 
 let {
     QUIT, WAIT, MATCH
-} = __webpack_require__(74);
+} = __webpack_require__(99);
 
-let stateGraphDSL = __webpack_require__(75);
+let stateGraphDSL = __webpack_require__(100);
 
 const START_STATE = '__start__state__';
 
@@ -7073,7 +9133,7 @@ module.exports = {
 
 
 /***/ }),
-/* 74 */
+/* 99 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7087,13 +9147,13 @@ module.exports = {
 
 
 /***/ }),
-/* 75 */
+/* 100 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-let actionDSL = __webpack_require__(26);
+let actionDSL = __webpack_require__(40);
 
 let {
     isNormalAction, isRangeAction, isUnionAction, isLeftAction, isEpsilonAction
@@ -7109,11 +9169,11 @@ let {
     circle,
 
     isEpsilonTransition
-} = __webpack_require__(76);
+} = __webpack_require__(101);
 
 let {
     mergeMap
-} = __webpack_require__(27);
+} = __webpack_require__(41);
 
 let transitionMaper = (graph) => {
     let transitions = {};
@@ -7319,7 +9379,7 @@ module.exports = mergeMap(actionDSL, {
 
 
 /***/ }),
-/* 76 */
+/* 101 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7329,7 +9389,7 @@ let {
     isString, isObject
 } = __webpack_require__(0);
 
-let actionDSL = __webpack_require__(26);
+let actionDSL = __webpack_require__(40);
 
 let {
     toAction
@@ -7337,7 +9397,7 @@ let {
 
 let {
     mergeMap
-} = __webpack_require__(27);
+} = __webpack_require__(41);
 
 /**
  * graph definition DSL
@@ -7477,7 +9537,7 @@ module.exports = mergeMap(actionDSL, {
 
 
 /***/ }),
-/* 77 */
+/* 102 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7485,7 +9545,7 @@ module.exports = mergeMap(actionDSL, {
 
 let {
     iterate
-} = __webpack_require__(28);
+} = __webpack_require__(42);
 
 let {
     isFunction
@@ -7602,7 +9662,7 @@ module.exports = {
 
 
 /***/ }),
-/* 78 */
+/* 103 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7612,7 +9672,7 @@ const START_STATE = '__start__state__';
 
 let {
     stateGraphDSL, DFA
-} = __webpack_require__(9);
+} = __webpack_require__(14);
 
 /**
  * build a fda to do the matching work
@@ -7642,7 +9702,7 @@ module.exports = (stateMap, accepts) => {
 
 
 /***/ }),
-/* 79 */
+/* 104 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7654,7 +9714,7 @@ let {
 
 let {
     MATCH, WAIT, QUIT
-} = __webpack_require__(15);
+} = __webpack_require__(23);
 
 let stringMatch = (word) => (prefix) => {
     if (word === prefix) return MATCH;
@@ -7674,7 +9734,7 @@ module.exports = {
 
 
 /***/ }),
-/* 80 */
+/* 105 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7682,11 +9742,11 @@ module.exports = {
 
 let {
     WAIT, MATCH
-} = __webpack_require__(15);
+} = __webpack_require__(23);
 
 let {
     assembleToken
-} = __webpack_require__(29);
+} = __webpack_require__(43);
 
 let filterTypes = (nextLetter, prefix, tokenTypes) => {
     let parts = [],
@@ -7742,7 +9802,7 @@ module.exports = {
 
 
 /***/ }),
-/* 81 */
+/* 106 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7791,11 +9851,11 @@ module.exports = {
  * let ast = lrParse(null); // null as end symbol
  * console.log(JSON.stringify(ast, null, 4));
  */
-module.exports = __webpack_require__(82);
+module.exports = __webpack_require__(107);
 
 
 /***/ }),
-/* 82 */
+/* 107 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7815,12 +9875,12 @@ module.exports = __webpack_require__(82);
  * 2. shift-in reduce
  */
 
-let LR = __webpack_require__(83);
-let LR1Table = __webpack_require__(86);
-let ctxFreeGrammer = __webpack_require__(91);
+let LR = __webpack_require__(108);
+let LR1Table = __webpack_require__(111);
+let ctxFreeGrammer = __webpack_require__(116);
 let {
     forEach
-} = __webpack_require__(5);
+} = __webpack_require__(7);
 
 /**
  * just used for testing
@@ -7848,7 +9908,7 @@ module.exports = {
 
 
 /***/ }),
-/* 83 */
+/* 108 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7875,13 +9935,13 @@ module.exports = {
 
 let {
     END_SYMBOL, EXPAND_START_SYMBOL
-} = __webpack_require__(30);
+} = __webpack_require__(44);
 
 let {
     initAST,
     reduceAST,
     appendToken
-} = __webpack_require__(84);
+} = __webpack_require__(109);
 
 /**
  * configuration = [stack, tokens]
@@ -8036,7 +10096,7 @@ let getNextInputToken = (configuration) => {
 
 
 /***/ }),
-/* 84 */
+/* 109 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8086,7 +10146,7 @@ let getNextInputToken = (configuration) => {
 
 let {
     map
-} = __webpack_require__(5);
+} = __webpack_require__(7);
 
 const TERMINAL_TYPE = 'terminal';
 const NONE_TERMINAL_TYPE = 'none-terminal';
@@ -8165,7 +10225,7 @@ module.exports = {
 
 
 /***/ }),
-/* 85 */
+/* 110 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8173,7 +10233,7 @@ module.exports = {
 
 let {
     iterate
-} = __webpack_require__(31);
+} = __webpack_require__(45);
 
 let {
     isFunction
@@ -8290,23 +10350,23 @@ module.exports = {
 
 
 /***/ }),
-/* 86 */
+/* 111 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-let LR1CanonicalCollection = __webpack_require__(87);
+let LR1CanonicalCollection = __webpack_require__(112);
 let {
     forEach, findIndex
-} = __webpack_require__(5);
-let GO = __webpack_require__(88);
+} = __webpack_require__(7);
+let GO = __webpack_require__(113);
 let {
     LR1Itemer
-} = __webpack_require__(89);
+} = __webpack_require__(114);
 let {
     sameClosure
-} = __webpack_require__(16);
+} = __webpack_require__(24);
 
 module.exports = (grammer) => {
     let {
@@ -8375,7 +10435,7 @@ let getStateIndex = (C, I) => findIndex(C, I, {
 
 
 /***/ }),
-/* 87 */
+/* 112 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8383,10 +10443,10 @@ let getStateIndex = (C, I) => findIndex(C, I, {
 
 let {
     buildClosure
-} = __webpack_require__(16);
+} = __webpack_require__(24);
 let {
     reduce
-} = __webpack_require__(5);
+} = __webpack_require__(7);
 
 /**
  * input: grammer G
@@ -8456,7 +10516,7 @@ let getGoToSymbolsSet = (symbols, I, go) => {
 
 
 /***/ }),
-/* 88 */
+/* 113 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8464,11 +10524,11 @@ let getGoToSymbolsSet = (symbols, I, go) => {
 
 let {
     reduce, filter
-} = __webpack_require__(5);
+} = __webpack_require__(7);
 
 let {
     buildClosure
-} = __webpack_require__(16);
+} = __webpack_require__(24);
 
 /**
  * jump
@@ -8531,17 +10591,17 @@ module.exports = (grammer, LR1Grammer) => {
 
 
 /***/ }),
-/* 89 */
+/* 114 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-let First = __webpack_require__(90);
+let First = __webpack_require__(115);
 
 let {
     union, reduce, filter, flat, map
-} = __webpack_require__(5);
+} = __webpack_require__(7);
 
 let LR1Itemer = (grammer) => {
     let {
@@ -8728,7 +10788,7 @@ module.exports = {
 
 
 /***/ }),
-/* 90 */
+/* 115 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8736,7 +10796,7 @@ module.exports = {
 
 let {
     contain, union, reduce, difference, forEach
-} = __webpack_require__(5);
+} = __webpack_require__(7);
 
 let {
     isArray
@@ -8841,7 +10901,7 @@ module.exports = (grammer) => {
 
 
 /***/ }),
-/* 91 */
+/* 116 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8862,7 +10922,7 @@ module.exports = (grammer) => {
 
 const {
     END_SYMBOL, EXPAND_START_SYMBOL, EPSILON
-} = __webpack_require__(30);
+} = __webpack_require__(44);
 
 /**
  * context free grammer is read-only
@@ -8948,7 +11008,7 @@ let getNoneTerminalProductionMap = (producitons) => {
 
 
 /***/ }),
-/* 92 */
+/* 117 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8957,13 +11017,13 @@ let getNoneTerminalProductionMap = (producitons) => {
 let {
     stringGraph,
     numberGraph
-} = __webpack_require__(93);
+} = __webpack_require__(118);
 
 let {
     buildFSM
-} = __webpack_require__(25);
+} = __webpack_require__(39);
 
-let FSM = __webpack_require__(9);
+let FSM = __webpack_require__(14);
 let {
     stateGraphDSL
 } = FSM;
@@ -9092,7 +11152,7 @@ module.exports = [
 
 
 /***/ }),
-/* 93 */
+/* 118 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9100,7 +11160,7 @@ module.exports = [
 
 let {
     stateGraphDSL
-} = __webpack_require__(9);
+} = __webpack_require__(14);
 
 let {
     g, c, union, range, sequence, circle, left, repeat
@@ -9150,13 +11210,13 @@ module.exports = {
 
 
 /***/ }),
-/* 94 */
+/* 119 */
 /***/ (function(module, exports) {
 
 module.exports={"GOTO":[{"PROGRAM":11,"EXPRESSION_LIST":12,"EXPRESSION":13,"UPDATE_EXPRESSION":14,"QUERY_EXPRESSION":15,"PATH":16,"ATOM_DATA":17},{"PATH":20},{"PATH":23},{},{"PATH":25},{"PATH":26},{},{},{},{},{},{},{},{},{},{},{},{},{"PATH":29},{"PATH":30},{},{"PATH":31},{"PATH":32},{},{"QUERY_EXPRESSION":43,"QUERY_EXPRESSION_LIST":44,"PATH":45,"ATOM_DATA":46},{},{},{"EXPRESSION_LIST":47,"EXPRESSION":13,"UPDATE_EXPRESSION":14,"QUERY_EXPRESSION":15,"PATH":16,"ATOM_DATA":17},{"QUERY_EXPRESSION":48,"PATH":49,"ATOM_DATA":17},{},{},{},{},{"QUERY_EXPRESSION":50,"PATH":49,"ATOM_DATA":17},{},{},{"PATH":52},{"PATH":53},{},{},{},{},{},{},{},{},{},{},{},{},{},{"QUERY_EXPRESSION":43,"QUERY_EXPRESSION_LIST":57,"PATH":45,"ATOM_DATA":46},{},{},{"QUERY_EXPRESSION":43,"QUERY_EXPRESSION_LIST":58,"PATH":45,"ATOM_DATA":46},{},{},{},{},{}],"ACTION":[{"$":{"type":"reduce","production":["EXPRESSION",[]]},"semicolon":{"type":"reduce","production":["EXPRESSION",[]]},"variableName":{"type":"shift","state":3},"delete":{"type":"shift","state":1},"append":{"type":"shift","state":2},"true":{"type":"shift","state":6},"false":{"type":"shift","state":7},"null":{"type":"shift","state":8},"string":{"type":"shift","state":9},"number":{"type":"shift","state":10},"nodeName":{"type":"shift","state":4},"nodeNameVariable":{"type":"shift","state":5}},{"nodeName":{"type":"shift","state":18},"nodeNameVariable":{"type":"shift","state":19}},{"nodeName":{"type":"shift","state":21},"nodeNameVariable":{"type":"shift","state":22}},{"$":{"type":"reduce","production":["QUERY_EXPRESSION",["variableName"]]},"semicolon":{"type":"reduce","production":["QUERY_EXPRESSION",["variableName"]]},"leftBracket":{"type":"shift","state":24}},{"$":{"type":"reduce","production":["PATH",["nodeName"]]},"assign":{"type":"reduce","production":["PATH",["nodeName"]]},"semicolon":{"type":"reduce","production":["PATH",["nodeName"]]},"nodeName":{"type":"shift","state":4},"nodeNameVariable":{"type":"shift","state":5}},{"$":{"type":"reduce","production":["PATH",["nodeNameVariable"]]},"assign":{"type":"reduce","production":["PATH",["nodeNameVariable"]]},"semicolon":{"type":"reduce","production":["PATH",["nodeNameVariable"]]},"nodeName":{"type":"shift","state":4},"nodeNameVariable":{"type":"shift","state":5}},{"$":{"type":"reduce","production":["ATOM_DATA",["true"]]},"semicolon":{"type":"reduce","production":["ATOM_DATA",["true"]]}},{"$":{"type":"reduce","production":["ATOM_DATA",["false"]]},"semicolon":{"type":"reduce","production":["ATOM_DATA",["false"]]}},{"$":{"type":"reduce","production":["ATOM_DATA",["null"]]},"semicolon":{"type":"reduce","production":["ATOM_DATA",["null"]]}},{"$":{"type":"reduce","production":["ATOM_DATA",["string"]]},"semicolon":{"type":"reduce","production":["ATOM_DATA",["string"]]}},{"$":{"type":"reduce","production":["ATOM_DATA",["number"]]},"semicolon":{"type":"reduce","production":["ATOM_DATA",["number"]]}},{"$":{"type":"accept"}},{"$":{"type":"reduce","production":["PROGRAM",["EXPRESSION_LIST"]]}},{"$":{"type":"reduce","production":["EXPRESSION_LIST",["EXPRESSION"]]},"semicolon":{"type":"shift","state":27}},{"$":{"type":"reduce","production":["EXPRESSION",["UPDATE_EXPRESSION"]]},"semicolon":{"type":"reduce","production":["EXPRESSION",["UPDATE_EXPRESSION"]]}},{"$":{"type":"reduce","production":["EXPRESSION",["QUERY_EXPRESSION"]]},"semicolon":{"type":"reduce","production":["EXPRESSION",["QUERY_EXPRESSION"]]}},{"$":{"type":"reduce","production":["QUERY_EXPRESSION",["PATH"]]},"semicolon":{"type":"reduce","production":["QUERY_EXPRESSION",["PATH"]]},"assign":{"type":"shift","state":28}},{"$":{"type":"reduce","production":["QUERY_EXPRESSION",["ATOM_DATA"]]},"semicolon":{"type":"reduce","production":["QUERY_EXPRESSION",["ATOM_DATA"]]}},{"$":{"type":"reduce","production":["PATH",["nodeName"]]},"semicolon":{"type":"reduce","production":["PATH",["nodeName"]]},"nodeName":{"type":"shift","state":18},"nodeNameVariable":{"type":"shift","state":19}},{"$":{"type":"reduce","production":["PATH",["nodeNameVariable"]]},"semicolon":{"type":"reduce","production":["PATH",["nodeNameVariable"]]},"nodeName":{"type":"shift","state":18},"nodeNameVariable":{"type":"shift","state":19}},{"$":{"type":"reduce","production":["UPDATE_EXPRESSION",["delete","PATH"]]},"semicolon":{"type":"reduce","production":["UPDATE_EXPRESSION",["delete","PATH"]]}},{"assign":{"type":"reduce","production":["PATH",["nodeName"]]},"nodeName":{"type":"shift","state":21},"nodeNameVariable":{"type":"shift","state":22}},{"assign":{"type":"reduce","production":["PATH",["nodeNameVariable"]]},"nodeName":{"type":"shift","state":21},"nodeNameVariable":{"type":"shift","state":22}},{"assign":{"type":"shift","state":33}},{"rightBracket":{"type":"shift","state":35},"variableName":{"type":"shift","state":34},"true":{"type":"shift","state":38},"false":{"type":"shift","state":39},"null":{"type":"shift","state":40},"string":{"type":"shift","state":41},"number":{"type":"shift","state":42},"nodeName":{"type":"shift","state":36},"nodeNameVariable":{"type":"shift","state":37}},{"$":{"type":"reduce","production":["PATH",["nodeName","PATH"]]},"assign":{"type":"reduce","production":["PATH",["nodeName","PATH"]]},"semicolon":{"type":"reduce","production":["PATH",["nodeName","PATH"]]}},{"$":{"type":"reduce","production":["PATH",["nodeNameVariable","PATH"]]},"assign":{"type":"reduce","production":["PATH",["nodeNameVariable","PATH"]]},"semicolon":{"type":"reduce","production":["PATH",["nodeNameVariable","PATH"]]}},{"$":{"type":"reduce","production":["EXPRESSION",[]]},"semicolon":{"type":"reduce","production":["EXPRESSION",[]]},"variableName":{"type":"shift","state":3},"delete":{"type":"shift","state":1},"append":{"type":"shift","state":2},"true":{"type":"shift","state":6},"false":{"type":"shift","state":7},"null":{"type":"shift","state":8},"string":{"type":"shift","state":9},"number":{"type":"shift","state":10},"nodeName":{"type":"shift","state":4},"nodeNameVariable":{"type":"shift","state":5}},{"variableName":{"type":"shift","state":3},"true":{"type":"shift","state":6},"false":{"type":"shift","state":7},"null":{"type":"shift","state":8},"string":{"type":"shift","state":9},"number":{"type":"shift","state":10},"nodeName":{"type":"shift","state":18},"nodeNameVariable":{"type":"shift","state":19}},{"$":{"type":"reduce","production":["PATH",["nodeName","PATH"]]},"semicolon":{"type":"reduce","production":["PATH",["nodeName","PATH"]]}},{"$":{"type":"reduce","production":["PATH",["nodeNameVariable","PATH"]]},"semicolon":{"type":"reduce","production":["PATH",["nodeNameVariable","PATH"]]}},{"assign":{"type":"reduce","production":["PATH",["nodeName","PATH"]]}},{"assign":{"type":"reduce","production":["PATH",["nodeNameVariable","PATH"]]}},{"variableName":{"type":"shift","state":3},"true":{"type":"shift","state":6},"false":{"type":"shift","state":7},"null":{"type":"shift","state":8},"string":{"type":"shift","state":9},"number":{"type":"shift","state":10},"nodeName":{"type":"shift","state":18},"nodeNameVariable":{"type":"shift","state":19}},{"comma":{"type":"reduce","production":["QUERY_EXPRESSION",["variableName"]]},"rightBracket":{"type":"reduce","production":["QUERY_EXPRESSION",["variableName"]]},"leftBracket":{"type":"shift","state":51}},{"$":{"type":"reduce","production":["QUERY_EXPRESSION",["variableName","leftBracket","rightBracket"]]},"semicolon":{"type":"reduce","production":["QUERY_EXPRESSION",["variableName","leftBracket","rightBracket"]]}},{"comma":{"type":"reduce","production":["PATH",["nodeName"]]},"rightBracket":{"type":"reduce","production":["PATH",["nodeName"]]},"nodeName":{"type":"shift","state":36},"nodeNameVariable":{"type":"shift","state":37}},{"comma":{"type":"reduce","production":["PATH",["nodeNameVariable"]]},"rightBracket":{"type":"reduce","production":["PATH",["nodeNameVariable"]]},"nodeName":{"type":"shift","state":36},"nodeNameVariable":{"type":"shift","state":37}},{"comma":{"type":"reduce","production":["ATOM_DATA",["true"]]},"rightBracket":{"type":"reduce","production":["ATOM_DATA",["true"]]}},{"comma":{"type":"reduce","production":["ATOM_DATA",["false"]]},"rightBracket":{"type":"reduce","production":["ATOM_DATA",["false"]]}},{"comma":{"type":"reduce","production":["ATOM_DATA",["null"]]},"rightBracket":{"type":"reduce","production":["ATOM_DATA",["null"]]}},{"comma":{"type":"reduce","production":["ATOM_DATA",["string"]]},"rightBracket":{"type":"reduce","production":["ATOM_DATA",["string"]]}},{"comma":{"type":"reduce","production":["ATOM_DATA",["number"]]},"rightBracket":{"type":"reduce","production":["ATOM_DATA",["number"]]}},{"rightBracket":{"type":"reduce","production":["QUERY_EXPRESSION_LIST",["QUERY_EXPRESSION"]]},"comma":{"type":"shift","state":54}},{"rightBracket":{"type":"shift","state":55}},{"comma":{"type":"reduce","production":["QUERY_EXPRESSION",["PATH"]]},"rightBracket":{"type":"reduce","production":["QUERY_EXPRESSION",["PATH"]]}},{"comma":{"type":"reduce","production":["QUERY_EXPRESSION",["ATOM_DATA"]]},"rightBracket":{"type":"reduce","production":["QUERY_EXPRESSION",["ATOM_DATA"]]}},{"$":{"type":"reduce","production":["EXPRESSION_LIST",["EXPRESSION","semicolon","EXPRESSION_LIST"]]}},{"$":{"type":"reduce","production":["UPDATE_EXPRESSION",["PATH","assign","QUERY_EXPRESSION"]]},"semicolon":{"type":"reduce","production":["UPDATE_EXPRESSION",["PATH","assign","QUERY_EXPRESSION"]]}},{"$":{"type":"reduce","production":["QUERY_EXPRESSION",["PATH"]]},"semicolon":{"type":"reduce","production":["QUERY_EXPRESSION",["PATH"]]}},{"$":{"type":"reduce","production":["UPDATE_EXPRESSION",["append","PATH","assign","QUERY_EXPRESSION"]]},"semicolon":{"type":"reduce","production":["UPDATE_EXPRESSION",["append","PATH","assign","QUERY_EXPRESSION"]]}},{"rightBracket":{"type":"shift","state":56},"variableName":{"type":"shift","state":34},"true":{"type":"shift","state":38},"false":{"type":"shift","state":39},"null":{"type":"shift","state":40},"string":{"type":"shift","state":41},"number":{"type":"shift","state":42},"nodeName":{"type":"shift","state":36},"nodeNameVariable":{"type":"shift","state":37}},{"comma":{"type":"reduce","production":["PATH",["nodeName","PATH"]]},"rightBracket":{"type":"reduce","production":["PATH",["nodeName","PATH"]]}},{"comma":{"type":"reduce","production":["PATH",["nodeNameVariable","PATH"]]},"rightBracket":{"type":"reduce","production":["PATH",["nodeNameVariable","PATH"]]}},{"variableName":{"type":"shift","state":34},"true":{"type":"shift","state":38},"false":{"type":"shift","state":39},"null":{"type":"shift","state":40},"string":{"type":"shift","state":41},"number":{"type":"shift","state":42},"nodeName":{"type":"shift","state":36},"nodeNameVariable":{"type":"shift","state":37}},{"$":{"type":"reduce","production":["QUERY_EXPRESSION",["variableName","leftBracket","QUERY_EXPRESSION_LIST","rightBracket"]]},"semicolon":{"type":"reduce","production":["QUERY_EXPRESSION",["variableName","leftBracket","QUERY_EXPRESSION_LIST","rightBracket"]]}},{"comma":{"type":"reduce","production":["QUERY_EXPRESSION",["variableName","leftBracket","rightBracket"]]},"rightBracket":{"type":"reduce","production":["QUERY_EXPRESSION",["variableName","leftBracket","rightBracket"]]}},{"rightBracket":{"type":"shift","state":59}},{"rightBracket":{"type":"reduce","production":["QUERY_EXPRESSION_LIST",["QUERY_EXPRESSION","comma","QUERY_EXPRESSION_LIST"]]}},{"comma":{"type":"reduce","production":["QUERY_EXPRESSION",["variableName","leftBracket","QUERY_EXPRESSION_LIST","rightBracket"]]},"rightBracket":{"type":"reduce","production":["QUERY_EXPRESSION",["variableName","leftBracket","QUERY_EXPRESSION_LIST","rightBracket"]]}}]}
 
 /***/ }),
-/* 95 */
+/* 120 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9169,7 +11229,7 @@ let {
     isObject,
     isFunction,
     isString
-} = __webpack_require__(32);
+} = __webpack_require__(46);
 
 let {
     T_ASSIGN,
@@ -9180,7 +11240,7 @@ let {
     T_NODE_NAME_VARIABLE,
 
     A_DEFAULT
-} = __webpack_require__(17);
+} = __webpack_require__(25);
 
 /**
  *
@@ -9298,13 +11358,13 @@ module.exports = {
 
 
 /***/ }),
-/* 96 */
+/* 121 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-let uuidv4 = __webpack_require__(21);
+let uuidv4 = __webpack_require__(36);
 
 let autoId = () => {
     let time = new Date().getTime(); // used to sort by time
@@ -9359,15 +11419,15 @@ module.exports = {
 
 
 /***/ }),
-/* 97 */
+/* 122 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-let querystring = __webpack_require__(24);
+let querystring = __webpack_require__(38);
 
-let helper = __webpack_require__(2);
+let helper = __webpack_require__(3);
 
 // TODO opt performance
 // TODO avoid save theme
@@ -9466,7 +11526,7 @@ module.exports = {
 
 
 /***/ }),
-/* 98 */
+/* 123 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9474,9 +11534,9 @@ module.exports = {
 
 const {
    // signal constants
-} = __webpack_require__(34);
+} = __webpack_require__(124);
 
-let {wrapBaseSignalActions} = __webpack_require__(99);
+let {wrapBaseSignalActions} = __webpack_require__(125);
 
 /**
  * 
@@ -9510,7 +11570,18 @@ module.exports = wrapBaseSignalActions({
 });
 
 /***/ }),
-/* 99 */
+/* 124 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+module.exports = {
+    //DO_SAVE_DATA: 'doSaveData'
+}
+
+/***/ }),
+/* 125 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9543,13 +11614,13 @@ module.exports = {
 
 
 /***/ }),
-/* 100 */
+/* 126 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-let indexPage = __webpack_require__(101);
+let indexPage = __webpack_require__(127);
 
 module.exports = {
     indexPage
@@ -9557,16 +11628,16 @@ module.exports = {
 
 
 /***/ }),
-/* 101 */
+/* 127 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-let SimplePager = __webpack_require__(102);
-let lumineView = __webpack_require__(3);
-let n = __webpack_require__(4);
-let TerminalView = __webpack_require__(118);
+let SimplePager = __webpack_require__(128);
+let lumineView = __webpack_require__(5);
+let n = __webpack_require__(6);
+let TerminalView = __webpack_require__(145);
 
 // common views
 // let Hn = require('kabanery-lumine/lib/view/layout/hn');
@@ -9614,7 +11685,7 @@ README.md    node_modules sample       test`
                 user: 'root',
                 cwd: '/home/root',
                 command: 'pwd',
-                output: '/home/root'
+                output: '/home/root/.............................................................................'
             }]
         })
     ]);
@@ -9624,18 +11695,18 @@ README.md    node_modules sample       test`
 
 
 /***/ }),
-/* 102 */
+/* 128 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-let lumineView = __webpack_require__(3);
-let n = __webpack_require__(4);
-let PageLoading = __webpack_require__(110);
-let Notice = __webpack_require__(115);
-let {syncBindWithKeyMap} = __webpack_require__(36);
-let Full = __webpack_require__(117);
+let lumineView = __webpack_require__(5);
+let n = __webpack_require__(6);
+let PageLoading = __webpack_require__(136);
+let Notice = __webpack_require__(141);
+let {syncBindWithKeyMap} = __webpack_require__(143);
+let Full = __webpack_require__(144);
 
 /**
  *
@@ -9671,7 +11742,7 @@ module.exports = (PageView) => {
 
 
 /***/ }),
-/* 103 */
+/* 129 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9679,20 +11750,20 @@ module.exports = (PageView) => {
 
 let {
     view
-} = __webpack_require__(6);
-let steadyTheme = __webpack_require__(104);
+} = __webpack_require__(9);
+let steadyTheme = __webpack_require__(130);
 let {
     deepMergeMap,
     resolveFnValue
-} = __webpack_require__(2);
-let ClassTable = __webpack_require__(109);
+} = __webpack_require__(3);
+let ClassTable = __webpack_require__(135);
 let {
     Signal
-} = __webpack_require__(7);
-let JsonTree = __webpack_require__(33);
+} = __webpack_require__(11);
+let JsonTree = __webpack_require__(47);
 let {
     executeAST
-} = __webpack_require__(14);
+} = __webpack_require__(22);
 
 /**
  * define the general interface for lumine view
@@ -9796,13 +11867,13 @@ module.exports = (viewFun) => ({
 
 
 /***/ }),
-/* 104 */
+/* 130 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-let base = __webpack_require__(105);
+let base = __webpack_require__(131);
 
 module.exports = base({
     pageColor: 'white',
@@ -9834,7 +11905,7 @@ module.exports = base({
 
 
 /***/ }),
-/* 105 */
+/* 131 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9842,12 +11913,12 @@ module.exports = base({
 
 let {
     styles
-} = __webpack_require__(2);
+} = __webpack_require__(3);
 
-let layout = __webpack_require__(35);
-let Bulk = __webpack_require__(106);
-let Actions = __webpack_require__(107);
-let Widget = __webpack_require__(108);
+let layout = __webpack_require__(48);
+let Bulk = __webpack_require__(132);
+let Actions = __webpack_require__(133);
+let Widget = __webpack_require__(134);
 
 module.exports = (basics, custom = {}) => {
     let bulks = Bulk(basics);
@@ -9870,7 +11941,7 @@ module.exports = (basics, custom = {}) => {
 
 
 /***/ }),
-/* 106 */
+/* 132 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9878,9 +11949,9 @@ module.exports = (basics, custom = {}) => {
 
 let {
     styles
-} = __webpack_require__(2);
+} = __webpack_require__(3);
 
-let layout = __webpack_require__(35);
+let layout = __webpack_require__(48);
 
 let {
     container
@@ -9930,7 +12001,7 @@ module.exports = (basics) => {
 
 
 /***/ }),
-/* 107 */
+/* 133 */
 /***/ (function(module, exports) {
 
 module.exports = (basics) => {
@@ -9959,12 +12030,12 @@ module.exports = (basics) => {
 
 
 /***/ }),
-/* 108 */
+/* 134 */
 /***/ (function(module, exports, __webpack_require__) {
 
 let {
     styles
-} = __webpack_require__(2);
+} = __webpack_require__(3);
 
 module.exports = (basics, layout, bulks) => {
     let {
@@ -10034,7 +12105,7 @@ module.exports = (basics, layout, bulks) => {
 
 
 /***/ }),
-/* 109 */
+/* 135 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -10042,13 +12113,13 @@ module.exports = (basics, layout, bulks) => {
 
 let {
     isMapObject
-} = __webpack_require__(2);
+} = __webpack_require__(3);
 
 let {
     mount,
     n,
     parseStyle
-} = __webpack_require__(6);
+} = __webpack_require__(9);
 
 const VIEW_CLASS_PREFIX = 'kabanery-lumine';
 
@@ -10131,18 +12202,18 @@ module.exports = (classTable) => {
 
 
 /***/ }),
-/* 110 */
+/* 136 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-let n = __webpack_require__(4);
-let lumineView = __webpack_require__(3);
+let n = __webpack_require__(6);
+let lumineView = __webpack_require__(5);
 
-let TextLoading = __webpack_require__(111);
-let PageMask = __webpack_require__(112);
-let Empty = __webpack_require__(114);
+let TextLoading = __webpack_require__(137);
+let PageMask = __webpack_require__(138);
+let Empty = __webpack_require__(140);
 
 module.exports = lumineView(({
     props,
@@ -10169,15 +12240,15 @@ module.exports = lumineView(({
 
 
 /***/ }),
-/* 111 */
+/* 137 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-let n = __webpack_require__(4);
+let n = __webpack_require__(6);
 
-let lumineView = __webpack_require__(3);
+let lumineView = __webpack_require__(5);
 
 // TODO easy disappear for loading view
 module.exports = lumineView(({
@@ -10225,15 +12296,15 @@ module.exports = lumineView(({
 
 
 /***/ }),
-/* 112 */
+/* 138 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-let FullWindow = __webpack_require__(113);
-let lumineView = __webpack_require__(3);
-let n = __webpack_require__(4);
+let FullWindow = __webpack_require__(139);
+let lumineView = __webpack_require__(5);
+let n = __webpack_require__(6);
 
 module.exports = lumineView(({
     props,
@@ -10254,7 +12325,7 @@ module.exports = lumineView(({
 
 
 /***/ }),
-/* 113 */
+/* 139 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -10262,14 +12333,14 @@ module.exports = lumineView(({
 
 let {
     n
-} = __webpack_require__(6);
-let lumineView = __webpack_require__(3);
+} = __webpack_require__(9);
+let lumineView = __webpack_require__(5);
 let {
     styles
-} = __webpack_require__(2);
+} = __webpack_require__(3);
 let {
     Signal
-} = __webpack_require__(7);
+} = __webpack_require__(11);
 
 module.exports = lumineView(({
     props,
@@ -10295,14 +12366,14 @@ module.exports = lumineView(({
 
 
 /***/ }),
-/* 114 */
+/* 140 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-let n = __webpack_require__(4);
-let lumineView = __webpack_require__(3);
+let n = __webpack_require__(6);
+let lumineView = __webpack_require__(5);
 
 module.exports = lumineView(() => {
     return n('div', {
@@ -10315,25 +12386,25 @@ module.exports = lumineView(() => {
 
 
 /***/ }),
-/* 115 */
+/* 141 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-let n = __webpack_require__(4);
-let lumineView = __webpack_require__(3);
+let n = __webpack_require__(6);
+let lumineView = __webpack_require__(5);
 let {
     Signal
-} = __webpack_require__(7);
+} = __webpack_require__(11);
 
 let {
     styles
-} = __webpack_require__(2);
+} = __webpack_require__(3);
 
 let {
     compileTreeScript
-} = __webpack_require__(116);
+} = __webpack_require__(142);
 
 let S_HideNotice = compileTreeScript('.props.show=false');
 
@@ -10381,7 +12452,7 @@ module.exports = lumineView(({
 
 
 /***/ }),
-/* 116 */
+/* 142 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -10390,7 +12461,7 @@ module.exports = lumineView(({
 let {
     parseStrToAst,
     checkAST
-} = __webpack_require__(14);
+} = __webpack_require__(22);
 
 let compileTreeScript = (treeScriptCode, {
     variableStub
@@ -10415,7 +12486,106 @@ module.exports = {
 
 
 /***/ }),
-/* 117 */
+/* 143 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+let {
+    get,
+    set
+} = __webpack_require__(3);
+
+let {
+    Signal
+} = __webpack_require__(11);
+
+const CHILD_SOURCE_TYPE = 'child';
+
+const identity = v => v;
+
+/**
+ * binding view with another view's props through a key map
+ *
+ * keyMap = {
+ *    binderKey: bindedKey
+ * }
+ */
+
+let syncBindWithKeyMap = (ctx, keyMap, {
+    bindedProps = {},
+    stopSignal,
+    autoUpdate = false,
+    updatedSignalTypes = null,
+    onChildSignal,
+    toBinded = identity,
+    toBinder = identity
+} = {}) => {
+    // TODO check
+
+    let viewData = ctx.getData();
+    let props = viewData.props;
+    let mappings = [];
+    for (let binderKey in keyMap) {
+        mappings.push([binderKey, keyMap[binderKey]]);
+    }
+
+    let mapedPropsValue = mappings.reduce((prev, [binderKey, bindedKey]) => {
+        let propValue = get(props, binderKey); // get from binder
+        set(prev, bindedKey, toBinded(propValue, binderKey, bindedKey)); // set for binded
+        return prev;
+    }, {});
+
+    let onsignal = (signal, data, sourceCtx) => {
+        // when event happened, sync the data
+        mappings.forEach(([binderKey, bindedKey]) => {
+            let propValue = get(data.props, bindedKey); // get from child
+            set(props, binderKey, toBinder(propValue, binderKey, bindedKey)); // set for parent
+        });
+
+        // handle the signal if necessary
+        onChildSignal && onChildSignal(signal, data, sourceCtx);
+
+        if (!stopSignal) {
+            // pop up the signal, TODO wrap the sigal to resolve chain
+            ctx.notify(
+                Signal(signal.type, {
+                    sourceType: CHILD_SOURCE_TYPE,
+                    keyMap,
+                    sourceSignal: signal,
+                    sourceData: data,
+                    sourceCtx
+                })
+            );
+        }
+
+        if (autoUpdate) {
+            if (!updatedSignalTypes) {
+                ctx.update(); // update binder view
+            } else {
+                if (updatedSignalTypes.findIndex((type) => type === signal.type) !== -1) {
+                    ctx.update(); // update binder view
+                }
+            }
+        }
+    };
+
+    // construct child props
+    return Object.assign({
+        theme: props.theme // extend theme by default
+    }, bindedProps, mapedPropsValue, {
+        onsignal
+    });
+};
+
+module.exports = {
+    syncBindWithKeyMap
+};
+
+
+/***/ }),
+/* 144 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -10423,11 +12593,11 @@ module.exports = {
 
 let {
     n
-} = __webpack_require__(6);
-let lumineView = __webpack_require__(3);
+} = __webpack_require__(9);
+let lumineView = __webpack_require__(5);
 let {
     styles
-} = __webpack_require__(2);
+} = __webpack_require__(3);
 
 module.exports = lumineView(({
     props,
@@ -10446,7 +12616,7 @@ module.exports = lumineView(({
 
 
 /***/ }),
-/* 118 */
+/* 145 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -10461,7 +12631,7 @@ const renderCommand = (command, props) => {
         n('div', [
             n('div', {
                 style: props.style.userPrompt
-            }, command.user),
+            }, command.user || 'root'),
 
             n('div', {
                 style: props.style.cwdPrompt
@@ -10499,7 +12669,9 @@ const renderCommand = (command, props) => {
                 style: {
                     padding: '0 0 0 5',
                     margin: '1 0 1 0',
-                    fontSize: 14
+                    fontSize: 14,
+                    wordWrap: 'break-word',
+                    whiteSpace: 'pre-wrap'
                 }
             }, command.output)
         ])
@@ -10560,2176 +12732,6 @@ module.exports = lumineView(({
 
 
 /***/ }),
-/* 119 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-/**
- * basic types
- */
-
-let truth = () => true;
-
-let isUndefined = v => v === undefined;
-
-let isNull = v => v === null;
-
-let isFalsy = v => !v;
-
-let likeArray = v => !!(v && typeof v === 'object' && typeof v.length === 'number' && v.length >= 0);
-
-let isArray = v => Array.isArray(v);
-
-let isString = v => typeof v === 'string';
-
-let isObject = v => !!(v && typeof v === 'object');
-
-let isFunction = v => typeof v === 'function';
-
-let isNumber = v => typeof v === 'number' && !isNaN(v);
-
-let isBool = v => typeof v === 'boolean';
-
-let isNode = (o) => {
-    return (
-        typeof Node === 'object' ? o instanceof Node :
-        o && typeof o === 'object' && typeof o.nodeType === 'number' && typeof o.nodeName === 'string'
-    );
-};
-
-let isPromise = v => v && typeof v === 'object' && typeof v.then === 'function' && typeof v.catch === 'function';
-
-let isRegExp = v => v instanceof RegExp;
-
-let isReadableStream = (v) => isObject(v) && isFunction(v.on) && isFunction(v.pipe);
-
-let isWritableStream = v => isObject(v) && isFunction(v.on) && isFunction(v.write);
-
-/**
- * check type
- *
- * types = [typeFun]
- */
-let funType = (fun, types = []) => {
-    if (!isFunction(fun)) {
-        throw new TypeError(typeErrorText(fun, 'function'));
-    }
-
-    if (!likeArray(types)) {
-        throw new TypeError(typeErrorText(types, 'array'));
-    }
-
-    for (let i = 0; i < types.length; i++) {
-        let typeFun = types[i];
-        if (typeFun) {
-            if (!isFunction(typeFun)) {
-                throw new TypeError(typeErrorText(typeFun, 'function'));
-            }
-        }
-    }
-
-    return function() {
-        // check type
-        for (let i = 0; i < types.length; i++) {
-            let typeFun = types[i];
-            let arg = arguments[i];
-            if (typeFun && !typeFun(arg)) {
-                throw new TypeError(`Argument type error. Arguments order ${i}. Argument is ${arg}. function is ${fun}, args are ${arguments}.`);
-            }
-        }
-        // result
-        return fun.apply(this, arguments);
-    };
-};
-
-let and = (...args) => {
-    if (!any(args, isFunction)) {
-        throw new TypeError('The argument of and must be function.');
-    }
-    return (v) => {
-        for (let i = 0; i < args.length; i++) {
-            let typeFun = args[i];
-            if (!typeFun(v)) {
-                return false;
-            }
-        }
-        return true;
-    };
-};
-
-let or = (...args) => {
-    if (!any(args, isFunction)) {
-        throw new TypeError('The argument of and must be function.');
-    }
-
-    return (v) => {
-        for (let i = 0; i < args.length; i++) {
-            let typeFun = args[i];
-            if (typeFun(v)) {
-                return true;
-            }
-        }
-        return false;
-    };
-};
-
-let not = (type) => {
-    if (!isFunction(type)) {
-        throw new TypeError('The argument of and must be function.');
-    }
-    return (v) => !type(v);
-};
-
-let any = (list, type) => {
-    if (!likeArray(list)) {
-        throw new TypeError(typeErrorText(list, 'list'));
-    }
-    if (!isFunction(type)) {
-        throw new TypeError(typeErrorText(type, 'function'));
-    }
-
-    for (let i = 0; i < list.length; i++) {
-        if (!type(list[i])) {
-            return false;
-        }
-    }
-    return true;
-};
-
-let exist = (list, type) => {
-    if (!likeArray(list)) {
-        throw new TypeError(typeErrorText(list, 'array'));
-    }
-    if (!isFunction(type)) {
-        throw new TypeError(typeErrorText(type, 'function'));
-    }
-
-    for (let i = 0; i < list.length; i++) {
-        if (type(list[i])) {
-            return true;
-        }
-    }
-    return false;
-};
-
-let mapType = (map) => {
-    if (!isObject(map)) {
-        throw new TypeError(typeErrorText(map, 'obj'));
-    }
-
-    for (let name in map) {
-        let type = map[name];
-        if (!isFunction(type)) {
-            throw new TypeError(typeErrorText(type, 'function'));
-        }
-    }
-
-    return (v) => {
-        if (!isObject(v)) {
-            return false;
-        }
-
-        for (let name in map) {
-            let type = map[name];
-            let attr = v[name];
-            if (!type(attr)) {
-                return false;
-            }
-        }
-
-        return true;
-    };
-};
-
-let listType = (type) => {
-    if (!isFunction(type)) {
-        throw new TypeError(typeErrorText(type, 'function'));
-    }
-
-    return (list) => any(list, type);
-};
-
-let typeErrorText = (v, expect) => {
-    return `Expect ${expect} type, but got type ${typeof v}, and value is ${v}`;
-};
-
-module.exports = {
-    isArray,
-    likeArray,
-    isString,
-    isObject,
-    isFunction,
-    isNumber,
-    isBool,
-    isNode,
-    isPromise,
-    isNull,
-    isUndefined,
-    isFalsy,
-    isRegExp,
-    isReadableStream,
-    isWritableStream,
-
-    funType,
-    any,
-    exist,
-
-    and,
-    or,
-    not,
-    mapType,
-    listType,
-    truth
-};
-
-
-/***/ }),
-/* 120 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-let {
-    isObject, funType, or, isString, isFalsy, likeArray
-} = __webpack_require__(119);
-
-let iterate = __webpack_require__(133);
-
-let {
-    map, reduce, find, findIndex, forEach, filter, any, exist, compact
-} = __webpack_require__(149);
-
-let contain = (list, item, fopts) => findIndex(list, item, fopts) !== -1;
-
-let difference = (list1, list2, fopts) => {
-    return reduce(list1, (prev, item) => {
-        if (!contain(list2, item, fopts) &&
-            !contain(prev, item, fopts)) {
-            prev.push(item);
-        }
-        return prev;
-    }, []);
-};
-
-let union = (list1, list2, fopts) => deRepeat(list2, fopts, deRepeat(list1, fopts));
-
-let mergeMap = (map1 = {}, map2 = {}) => reduce(map2, setValueKey, reduce(map1, setValueKey, {}));
-
-let setValueKey = (obj, value, key) => {
-    obj[key] = value;
-    return obj;
-};
-
-let interset = (list1, list2, fopts) => {
-    return reduce(list1, (prev, cur) => {
-        if (contain(list2, cur, fopts)) {
-            prev.push(cur);
-        }
-        return prev;
-    }, []);
-};
-
-let deRepeat = (list, fopts, init = []) => {
-    return reduce(list, (prev, cur) => {
-        if (!contain(prev, cur, fopts)) {
-            prev.push(cur);
-        }
-        return prev;
-    }, init);
-};
-
-/**
- * a.b.c
- */
-let get = funType((sandbox, name = '') => {
-    name = name.trim();
-    let parts = !name ? [] : name.split('.');
-    return reduce(parts, getValue, sandbox, invertLogic);
-}, [
-    isObject,
-    or(isString, isFalsy)
-]);
-
-let getValue = (obj, key) => obj[key];
-
-let invertLogic = v => !v;
-
-let delay = (time) => new Promise((resolve) => {
-    setTimeout(resolve, time);
-});
-
-let flat = (list) => {
-    if (likeArray(list) && !isString(list)) {
-        return reduce(list, (prev, item) => {
-            prev = prev.concat(flat(item));
-            return prev;
-        }, []);
-    } else {
-        return [list];
-    }
-};
-
-module.exports = {
-    flat,
-    contain,
-    difference,
-    union,
-    interset,
-    map,
-    reduce,
-    iterate,
-    find,
-    findIndex,
-    deRepeat,
-    forEach,
-    filter,
-    any,
-    exist,
-    get,
-    delay,
-    mergeMap,
-    compact
-};
-
-
-/***/ }),
-/* 121 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-let {
-    isObject, funType, or, isString, isFalsy, likeArray
-} = __webpack_require__(119);
-
-let iterate = __webpack_require__(144);
-
-let {
-    map, reduce, find, findIndex, forEach, filter, any, exist, compact, reverse, overArgs
-} = __webpack_require__(191);
-
-let contain = (list, item, fopts) => findIndex(list, item, fopts) !== -1;
-
-let difference = (list1, list2, fopts) => {
-    return reduce(list1, (prev, item) => {
-        if (!contain(list2, item, fopts) &&
-            !contain(prev, item, fopts)) {
-            prev.push(item);
-        }
-        return prev;
-    }, []);
-};
-
-let union = (list1, list2, fopts) => deRepeat(list2, fopts, deRepeat(list1, fopts));
-
-let mergeMap = (map1 = {}, map2 = {}) => reduce(map2, setValueKey, reduce(map1, setValueKey, {}));
-
-let setValueKey = (obj, value, key) => {
-    obj[key] = value;
-    return obj;
-};
-
-let interset = (list1, list2, fopts) => {
-    return reduce(list1, (prev, cur) => {
-        if (contain(list2, cur, fopts)) {
-            prev.push(cur);
-        }
-        return prev;
-    }, []);
-};
-
-let deRepeat = (list, fopts, init = []) => {
-    return reduce(list, (prev, cur) => {
-        if (!contain(prev, cur, fopts)) {
-            prev.push(cur);
-        }
-        return prev;
-    }, init);
-};
-
-/**
- * a.b.c
- */
-let get = funType((sandbox, name = '') => {
-    name = name.trim();
-    let parts = !name ? [] : name.split('.');
-    return reduce(parts, getValue, sandbox, invertLogic);
-}, [
-    isObject,
-    or(isString, isFalsy)
-]);
-
-let getValue = (obj, key) => obj[key];
-
-let invertLogic = v => !v;
-
-let delay = (time) => new Promise((resolve) => {
-    setTimeout(resolve, time);
-});
-
-let flat = (list) => {
-    if (likeArray(list) && !isString(list)) {
-        return reduce(list, (prev, item) => {
-            prev = prev.concat(flat(item));
-            return prev;
-        }, []);
-    } else {
-        return [list];
-    }
-};
-
-module.exports = {
-    flat,
-    contain,
-    difference,
-    union,
-    interset,
-    map,
-    reduce,
-    iterate,
-    find,
-    findIndex,
-    deRepeat,
-    forEach,
-    filter,
-    any,
-    exist,
-    get,
-    delay,
-    mergeMap,
-    compact,
-    reverse,
-    overArgs
-};
-
-
-/***/ }),
-/* 122 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-let styles = (...styleObjects) => {
-    return Object.assign({}, ...styleObjects);
-};
-
-let isMapObject = (v) => {
-    return v && typeof v === 'object' && !Array.isArray(v);
-};
-
-let deepMergeMap = (tar, def, path = '', options = {}) => {
-    let blackList = options.blackList || [];
-    if (blackList.findIndex((item) => item === path) !== -1) {
-        return tar;
-    }
-    if (isMapObject(def)) {
-        tar = tar || {};
-        if (isMapObject(tar)) {
-            for (let name in def) {
-                tar[name] = deepMergeMap(tar[name], def[name], path === '' ? name : path + '.' + name, options);
-            }
-        }
-        return tar;
-    } else {
-        if (tar === undefined) return def;
-        return tar;
-    }
-};
-
-let resolveFnValue = (fn, ...args) => {
-    if (typeof fn === 'function') {
-        return resolveFnValue(fn(...args));
-    }
-
-    return fn;
-};
-
-let get = (obj, key = '') => {
-    key = key.trim();
-    let parts = !key ? [] : key.split('.');
-
-    let partLen = parts.length;
-    for (let i = 0; i < partLen; i++) {
-        let part = parts[i].trim();
-        if (part) {
-            obj = obj[part];
-        }
-    }
-
-    return obj;
-};
-
-let set = (obj, key = '', value) => {
-    key = key.trim();
-    let parts = !key ? [] : key.split('.');
-    if (!parts.length) return;
-    let parent = obj;
-
-    for (let i = 0; i < parts.length - 1; i++) {
-        let part = parts[i];
-        part = part.trim();
-        if (part) {
-            let next = parent[part];
-            if (!isObject(next)) {
-                next = {};
-                parent[part] = next;
-            }
-            parent = next;
-        }
-    }
-
-    parent[parts[parts.length - 1]] = value;
-    return obj;
-};
-
-let isObject = (v) => v && typeof v === 'object';
-
-let likeArray = (v) => v && typeof v === 'object' && typeof v.length === 'number';
-
-module.exports = {
-    styles,
-    isMapObject,
-    deepMergeMap,
-    resolveFnValue,
-    get,
-    set,
-    isObject,
-    likeArray
-};
-
-
-/***/ }),
-/* 123 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-let {
-    reduce
-} = __webpack_require__(120);
-let {
-    funType, isObject, or, isString, isFalsy
-} = __webpack_require__(119);
-
-let defineProperty = (obj, key, opts) => {
-    if (Object.defineProperty) {
-        Object.defineProperty(obj, key, opts);
-    } else {
-        obj[key] = opts.value;
-    }
-    return obj;
-};
-
-let hasOwnProperty = (obj, key) => {
-    if (obj.hasOwnProperty) {
-        return obj.hasOwnProperty(key);
-    }
-    for (var name in obj) {
-        if (name === key) return true;
-    }
-    return false;
-};
-
-let toArray = (v = []) => Array.prototype.slice.call(v);
-
-/**
- * a.b.c
- */
-let get = funType((sandbox, name = '') => {
-    name = name.trim();
-    let parts = !name ? [] : name.split('.');
-    return reduce(parts, getValue, sandbox, invertLogic);
-}, [
-    isObject,
-    or(isString, isFalsy)
-]);
-
-let getValue = (obj, key) => obj[key];
-
-let invertLogic = v => !v;
-
-let set = (sandbox, name = '', value) => {
-    name = name.trim();
-    let parts = !name ? [] : name.split('.');
-    let parent = sandbox;
-    if (!isObject(parent)) return;
-    if (!parts.length) return;
-    for (let i = 0; i < parts.length - 1; i++) {
-        let part = parts[i];
-        parent = parent[part];
-        // avoid exception
-        if (!isObject(parent)) return null;
-    }
-
-    parent[parts[parts.length - 1]] = value;
-    return true;
-};
-
-/**
- * provide property:
- *
- * 1. read props freely
- *
- * 2. change props by provide token
- */
-
-let authProp = (token) => {
-    let set = (obj, key, value) => {
-        let temp = null;
-
-        if (!hasOwnProperty(obj, key)) {
-            defineProperty(obj, key, {
-                enumerable: false,
-                configurable: false,
-                set: (value) => {
-                    if (isObject(value)) {
-                        if (value.token === token) {
-                            // save
-                            temp = value.value;
-                        }
-                    }
-                },
-                get: () => {
-                    return temp;
-                }
-            });
-        }
-
-        setProp(obj, key, value);
-    };
-
-    let setProp = (obj, key, value) => {
-        obj[key] = {
-            token,
-            value
-        };
-    };
-
-    return {
-        set
-    };
-};
-
-let evalCode = (code) => {
-    if (typeof code !== 'string') return code;
-    return eval(`(function(){
-    try {
-        ${code}
-    } catch(err) {
-        console.log('Error happened, when eval code.');
-        throw err;
-    }
-})()`);
-};
-
-let delay = (time) => new Promise((resolve) => {
-    setTimeout(resolve, time);
-});
-
-let runSequence = (list, params = [], context, stopV) => {
-    if (!list.length) {
-        return Promise.resolve();
-    }
-    let fun = list[0];
-    let v = fun && fun.apply(context, params);
-    if (stopV && v === stopV) {
-        return Promise.resolve(stopV);
-    }
-    return Promise.resolve(v).then(() => {
-        return runSequence(list.slice(1), params, context, stopV);
-    });
-};
-
-module.exports = {
-    defineProperty,
-    hasOwnProperty,
-    toArray,
-    get,
-    set,
-    authProp,
-    evalCode,
-    delay,
-    runSequence
-};
-
-
-/***/ }),
-/* 124 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-/**
- *
- * @readme-quick-run
- *
- * ## test tar=js r_c=FSM
- *
- *
- * let {
- *     stateGraphDSL, fsm, WAIT, MATCH
- * } = FSM;
- *
- * let {
- *     g, c, union, range, sequence, circle, left, repeat
- * } = stateGraphDSL;
- *
- * let hexDigit = union(range('0', '9'), range('A', 'F'), range('a', 'f'));
- *
- * let escapeSymbols = union('"', '\\', '\/', 'b', 'f', 'n', 'r', 't');
- *
- * let stringDFA = g(
- *     c('"', g('enter',
- *         c('\\', g(
- *             c(escapeSymbols, 'enter'),
- *             c('u',
- *                 g(repeat(hexDigit, 4, 'enter'))
- *             ))),
- *         c('"', 'accept'),
- *         c(left(), 'enter')
- *     )));
- *
- * let m = fsm(stringDFA);
- * console.log(m('"').type === WAIT);
- * console.log(m('a').type === WAIT);
- * console.log(m('b').type === WAIT);
- * console.log(m('"').type === MATCH);
- *
- **/
-module.exports = __webpack_require__(179);
-
-
-/***/ }),
-/* 125 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-module.exports = __webpack_require__(148);
-
-/**
- * @readme-doc
- *
- * ## features
- *
- * - simple DOM DSL, construct dom tree quickly
- *
- * - data-driven view, include updating view by data
- *
- * - Just functions, easy to compose
- *
- * [readme-lang:zh]## 特征
- *
- * - 简单的DOM DSL，快速构建DOM结构
- *
- * - 数据驱动视图，包括通过数据更新视图
- *
- * - 以函数为核心，易于复合
- *
- */
-
-/**
- * @readme-quick-run
- *
- * Using method n to construct dom node quickly.
- *
- * [readme-lang:zh]用方法n快速构造dom节点
- *
- * ## test tar=js r_c=kabanery env=browser
- * let {n, mount} = kabanery;
- *
- * mount(n('div', {
- *   id: 'qu',
- *   style: {
- *      backgroundColor: 'red'
- *   }
- * }, [
- *      n('span class=go style="font-size:16px"', 'hello!')
- * ]), document.body);
- *
- * console.log(document.getElementById('qu').outerHTML); // print result
- */
-
-/**
- * @readme-quick-run
- *
- * Basic way to construct a view.
- *
- * [readme-lang:zh]构造一个组件的简单方法
- *
- * ## test tar=js r_c=kabanery env=browser
- * let {view, n, mount} = kabanery;
- *
- * let MyView = view((data) => {
- *      let {type} = data;
- *
- *      return n('div', {
- *         id: 'test1',
- *         style: {
- *            fontSize: 10
- *         }
- *      },[
- *          type === 2 && n('span', 'second'),
- *          type === 3 && n('div', 'third')
- *      ]);
- * });
- *
- * mount(MyView({type: 3}), document.body);
- *
- * console.log(document.getElementById('test1').outerHTML); // print result
- */
-
-/**
- * @readme-quick-run
- *
- * Using update api to update a view.
- *
- * [readme-lang:zh]运用update api去更新一个view
- *
- * ## test tar=js r_c=kabanery env=browser
- * let {view, n, mount} = kabanery;
- *
- * let MyView = view((data, {update}) => {
- *      return n('div', {
- *         id: 'a',
- *         style: {
- *            fontSize: 10
- *         },
- *         onclick: () => {
- *            update('show', !data.show);
- *         }
- *      }, [
- *          data.show && n('div', 'show text')
- *      ]);
- * });
- *
- * mount(MyView({show: false}), document.body);
- *
- * document.getElementById('a').click(); // simulate user action
- * console.log(document.getElementById('a').outerHTML); // print result
- */
-
-
-/***/ }),
-/* 126 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-let {
-    map
-} = __webpack_require__(120);
-let {
-    isObject, isNode
-} = __webpack_require__(119);
-
-let parseArgs = __webpack_require__(150);
-
-let parseStyle = __webpack_require__(134);
-
-const KABANERY_NODE = 'kabanery_node';
-
-// TODO general proxy n way
-
-let cn = (elementType) => {
-    return (...args) => {
-        let {
-            tagName, attributes, childs
-        } = parseArgs(args);
-
-        if (isKabaneryNode(attributes)) {
-            childs = [attributes];
-            attributes = {};
-        }
-
-        // plugin
-        runPlugins(attributes['plugin'], tagName, attributes, childs);
-
-        let {
-            attrMap, eventMap
-        } = splitAttribues(attributes);
-
-        return {
-            tagName,
-            attrMap,
-            eventMap,
-            elementType,
-            type: KABANERY_NODE, childNodes: childs,
-        };
-    };
-};
-
-let isKabaneryNode = (v) => isObject(v) && v.type === KABANERY_NODE;
-
-let bindPlugs = (typen, plugs = []) => (...args) => {
-    let {
-        tagName, attributes, childs
-    } = parseArgs(args);
-
-    let oriPlugs = attributes.plugin = attributes.plugin || [];
-    attributes.plugin = oriPlugs.concat(plugs);
-
-    let node = typen(tagName, attributes, childs);
-
-    return node;
-};
-
-let runPlugins = (plugs = [], tagName, attributes, childExp) => {
-    for (let i = 0; i < plugs.length; i++) {
-        let plug = plugs[i];
-        plug && plug(tagName, attributes, childExp);
-    }
-};
-
-let splitAttribues = (attributes) => {
-    let attrMap = {},
-        eventMap = {};
-    for (let name in attributes) {
-        let item = attributes[name];
-        if (name.indexOf('on') === 0) {
-            eventMap[name.substring(2)] = item;
-        } else if (name !== 'plugin') {
-            attrMap[name] = item;
-        }
-    }
-    return {
-        attrMap,
-        eventMap
-    };
-};
-
-// TODO svg
-let toHTML = (node) => {
-    if (isNode(node)) {
-        return node.outerHTML;
-    } else if (isKabaneryNode(node)) {
-        let {
-            tagName, attrMap, childNodes
-        } = node;
-        let attrStr = map(attrMap, (value, key) => `${key}="${value}"`).join(' ');
-        attrStr = attrStr ? ' ' + attrStr : '';
-        return `<${tagName}${attrStr}>${map(childNodes, toHTML).join('')}</${tagName}>`;
-    } else {
-        return node + '';
-    }
-};
-
-module.exports = {
-    n: cn('html'),
-    svgn: cn('svg'),
-    cn,
-    bindPlugs,
-    isKabaneryNode,
-    toHTML,
-    parseArgs,
-    parseStyle
-};
-
-
-/***/ }),
-/* 127 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-let uuidv4 = __webpack_require__(135);
-
-let seed = uuidv4();
-
-module.exports = {
-    eventMapHook: `__eventMap_${seed}`,
-    globalEventTypePrefix: `__event_type_id_${seed}_`,
-    stopPropagationFlag: '__stopPropagation'
-};
-
-
-/***/ }),
-/* 128 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-let {
-    createElement, createSvgElement
-} = __webpack_require__(163);
-
-let {
-    bindEvents
-} = __webpack_require__(129);
-
-let {
-    map
-} = __webpack_require__(120);
-
-let {
-    isKabaneryNode
-} = __webpack_require__(126);
-
-let reduceNode = (node) => {
-    if (isKabaneryNode(node)) {
-        let tarNode = null;
-        if (node.elementType === 'html') {
-            tarNode = createElement(node.tagName, node.attrMap, map(node.childNodes, reduceNode));
-        } else {
-            tarNode = createSvgElement(node.tagName, node.attrMap, map(node.childNodes, reduceNode));
-        }
-
-        bindEvents(tarNode, node.eventMap);
-        return tarNode;
-    } else {
-        return node;
-    }
-};
-
-module.exports = reduceNode;
-
-
-/***/ }),
-/* 129 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-let EventMatrix = __webpack_require__(164);
-
-let {
-    eventMapHook
-} = __webpack_require__(127);
-
-let {
-    listenEventType,
-    clearEvents,
-    attachDocument,
-    dispatchEvent
-} = EventMatrix();
-
-let bindEvents = (node, eventMap) => {
-    // hook event at node
-    node[eventMapHook] = eventMap;
-
-    for (let type in eventMap) {
-        listenEventType(type);
-    }
-};
-
-module.exports = {
-    bindEvents,
-    attachDocument,
-    dispatchEvent,
-    clearEvents
-};
-
-
-/***/ }),
-/* 130 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-module.exports = {
-    WAIT: 2,
-    MATCH: 1,
-    QUIT: 0
-};
-
-
-/***/ }),
-/* 131 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-let {
-    reduce
-} = __webpack_require__(121);
-
-/**
- *
- * valide LR(1) item: LR(1) item [A→α.β, a] is valide for prefix ρ=δα, if exists:
- *      S *⇒ δAω ⇒ δαβω
- *
- * inference: if [A→α.Bβ,a] is valide for ρ=δα, and B→θ is a production, then for any b ϵ FIRST(βa), [B→.θ,b] is valide for predix ρ=δα
- *
- * LR(1) item: [head, body, dotPosition, [...forward]]
- *
- * important: when closure is builded, it's immutable
- */
-
-let buildClosure = (items, grammer, LR1Grammer) => {
-    let appendedItems = items;
-    let itemsMap = {};
-    let prefixMap = {};
-
-    for (let i = 0; i < items.length; i++) {
-        let item = items[i];
-        itemsMap[item.serialize()] = true;
-        prefixMap[item.serializePrefix()] = item;
-    }
-
-    while (true) { // eslint-disable-line
-        let newAppendedItems = reduce(appendedItems, (prev, item) => {
-            let newItems = LR1Grammer.expandItem(item);
-            return prev.concat(newItems);
-        }, []);
-
-        let noRepeatedNewItems = [];
-
-        for (let i = 0; i < newAppendedItems.length; i++) {
-            let item = newAppendedItems[i];
-            let itemId = item.serialize();
-
-            if (!itemsMap[itemId]) {
-                // add new item
-                noRepeatedNewItems.push(item);
-                itemsMap[item.serialize()] = true;
-                let prefixCacheItem = prefixMap[item.serializePrefix()];
-                if (prefixCacheItem) {
-                    prefixMap[item.serializePrefix()] = prefixCacheItem.concatForwards(item.getForwards());
-                } else {
-                    prefixMap[item.serializePrefix()] = item;
-                }
-            }
-        }
-
-        if (!noRepeatedNewItems.length) break;
-
-        items = items.concat(noRepeatedNewItems);
-        appendedItems = noRepeatedNewItems;
-    }
-
-    let serializedText = JSON.stringify(Object.keys(itemsMap).sort());
-
-    let result = [];
-
-    for (let name in prefixMap) {
-        result.push(prefixMap[name]);
-    }
-
-    return {
-        items: result,
-        serializedText
-    };
-};
-
-let sameClosure = (closure1, closure2) => closure1.serializedText === closure2.serializedText;
-
-module.exports = {
-    buildClosure,
-    sameClosure
-};
-
-
-/***/ }),
-/* 132 */
-/***/ (function(module, exports) {
-
-module.exports = {
-    P_PROGRAM: 'PROGRAM := EXPRESSION_LIST',
-
-    P_EXPRESSION_LIST_0: 'EXPRESSION_LIST := EXPRESSION',
-    P_EXPRESSION_LIST_1: 'EXPRESSION_LIST := EXPRESSION semicolon EXPRESSION_LIST',
-
-    P_EXPRESSION_0: 'EXPRESSION := QUERY_EXPRESSION',
-    P_EXPRESSION_1: 'EXPRESSION := UPDATE_EXPRESSION',
-    P_EXPRESSION_2: 'EXPRESSION := ',
-
-    P_UPDATE_EXPRESSION_0: 'UPDATE_EXPRESSION := PATH assign QUERY_EXPRESSION',
-    P_UPDATE_EXPRESSION_1: 'UPDATE_EXPRESSION := delete PATH',
-    P_UPDATE_EXPRESSION_2: 'UPDATE_EXPRESSION := append PATH assign QUERY_EXPRESSION',
-
-    P_QUERY_EXPRESSION_0: 'QUERY_EXPRESSION := ATOM_DATA',
-    P_QUERY_EXPRESSION_1: 'QUERY_EXPRESSION := variableName',
-    P_QUERY_EXPRESSION_2: 'QUERY_EXPRESSION := PATH',
-    P_QUERY_EXPRESSION_3: 'QUERY_EXPRESSION := variableName leftBracket rightBracket',
-    P_QUERY_EXPRESSION_4: 'QUERY_EXPRESSION := variableName leftBracket QUERY_EXPRESSION_LIST rightBracket',
-
-    P_QUERY_EXPRESSION_LIST_0: 'QUERY_EXPRESSION_LIST := QUERY_EXPRESSION',
-    P_QUERY_EXPRESSION_LIST_1: 'QUERY_EXPRESSION_LIST := QUERY_EXPRESSION comma QUERY_EXPRESSION_LIST',
-
-    P_PATH_0: 'PATH := nodeName',
-    P_PATH_1: 'PATH := nodeName PATH',
-    P_PATH_2: 'PATH := nodeNameVariable',
-    P_PATH_3: 'PATH := nodeNameVariable PATH',
-
-    P_ATOM_DATA_0: 'ATOM_DATA := true',
-    P_ATOM_DATA_1: 'ATOM_DATA := false',
-    P_ATOM_DATA_2: 'ATOM_DATA := null',
-    P_ATOM_DATA_3: 'ATOM_DATA := string',
-    P_ATOM_DATA_4: 'ATOM_DATA := number',
-
-    T_ATOM: 'atom',
-    T_PATH: 'path',
-    T_FUNCTION: 'function',
-    T_VARIABLE_NAME: 'variableName',
-    T_ASSIGN: 'assign',
-    T_DELETE: 'delete',
-    T_APPEND: 'append',
-    T_NODE_NAME: 'nodeName',
-    T_NODE_NAME_VARIABLE: 'nodeNameVariable',
-
-    A_DEFAULT: 'default'
-};
-
-
-/***/ }),
-/* 133 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-let {
-    likeArray, isObject, funType, isFunction, isUndefined, or, isNumber, isFalsy, mapType
-} = __webpack_require__(119);
-
-/**
- *
- * preidcate: chose items to iterate
- * limit: when to stop iteration
- * transfer: transfer item
- * output
- */
-let iterate = funType((domain = [], opts = {}) => {
-    let {
-        predicate, transfer, output, limit, def
-    } = opts;
-
-    opts.predicate = predicate || truthy;
-    opts.transfer = transfer || id;
-    opts.output = output || toList;
-    if (limit === undefined) limit = domain && domain.length;
-    limit = opts.limit = stopCondition(limit);
-
-    let rets = def;
-    let count = 0;
-
-    if (likeArray(domain)) {
-        for (let i = 0; i < domain.length; i++) {
-            let itemRet = iterateItem(domain, i, count, rets, opts);
-            rets = itemRet.rets;
-            count = itemRet.count;
-            if (itemRet.stop) return rets;
-        }
-    } else if (isObject(domain)) {
-        for (let name in domain) {
-            let itemRet = iterateItem(domain, name, count, rets, opts);
-            rets = itemRet.rets;
-            count = itemRet.count;
-            if (itemRet.stop) return rets;
-        }
-    }
-
-    return rets;
-}, [
-    or(isObject, isFunction, isFalsy),
-    or(isUndefined, mapType({
-        predicate: or(isFunction, isFalsy),
-        transfer: or(isFunction, isFalsy),
-        output: or(isFunction, isFalsy),
-        limit: or(isUndefined, isNumber, isFunction)
-    }))
-]);
-
-let iterateItem = (domain, name, count, rets, {
-    predicate, transfer, output, limit
-}) => {
-    let item = domain[name];
-    if (limit(rets, item, name, domain, count)) {
-        // stop
-        return {
-            stop: true,
-            count,
-            rets
-        };
-    }
-
-    if (predicate(item)) {
-        rets = output(rets, transfer(item, name, domain, rets), name, domain);
-        count++;
-    }
-    return {
-        stop: false,
-        count,
-        rets
-    };
-};
-
-let stopCondition = (limit) => {
-    if (isUndefined(limit)) {
-        return falsy;
-    } else if (isNumber(limit)) {
-        return (rets, item, name, domain, count) => count >= limit;
-    } else {
-        return limit;
-    }
-};
-
-let toList = (prev, v) => {
-    prev.push(v);
-    return prev;
-};
-
-let truthy = () => true;
-
-let falsy = () => false;
-
-let id = v => v;
-
-module.exports = iterate;
-
-
-/***/ }),
-/* 134 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-let {
-    isString,
-    isObject
-} = __webpack_require__(119);
-
-module.exports = (attr = '', {
-    keyWrapper,
-    valueWrapper
-} = {}) => {
-    if (isString(attr)) {
-        return attr;
-    }
-
-    if (!isObject(attr)) {
-        throw new TypeError(`Expect object for style object, but got ${attr}`);
-    }
-    let styles = [];
-    for (let key in attr) {
-        let value = attr[key];
-        key = convertStyleKey(key);
-        value = convertStyleValue(value, key);
-        if (keyWrapper) {
-            key = keyWrapper(key, value);
-        }
-
-        if (valueWrapper) {
-            value = valueWrapper(value, key);
-        }
-
-        styles.push(`${key}: ${value};`);
-    }
-    return styles.join('');
-};
-
-let convertStyleKey = (key) => {
-    return key.replace(/[A-Z]/, (letter) => {
-        return `-${letter.toLowerCase()}`;
-    });
-};
-
-let convertStyleValue = (value, key) => {
-    if (typeof value === 'number' && key !== 'z-index') {
-        return value + 'px';
-    }
-    if (key === 'padding' || key === 'margin') {
-        let parts = value.split(' ');
-        for (let i = 0; i < parts.length; i++) {
-            let part = parts[i];
-            if (!isNaN(Number(part))) {
-                parts[i] = part + 'px';
-            }
-        }
-
-        value = parts.join(' ');
-    }
-    return value;
-};
-
-
-/***/ }),
-/* 135 */
-/***/ (function(module, exports, __webpack_require__) {
-
-var rng = __webpack_require__(157);
-var bytesToUuid = __webpack_require__(158);
-
-function v4(options, buf, offset) {
-  var i = buf && offset || 0;
-
-  if (typeof(options) == 'string') {
-    buf = options == 'binary' ? new Array(16) : null;
-    options = null;
-  }
-  options = options || {};
-
-  var rnds = options.random || (options.rng || rng)();
-
-  // Per 4.4, set bits for version and `clock_seq_hi_and_reserved`
-  rnds[6] = (rnds[6] & 0x0f) | 0x40;
-  rnds[8] = (rnds[8] & 0x3f) | 0x80;
-
-  // Copy bytes to buffer, if provided
-  if (buf) {
-    for (var ii = 0; ii < 16; ++ii) {
-      buf[i + ii] = rnds[ii];
-    }
-  }
-
-  return buf || bytesToUuid(rnds);
-}
-
-module.exports = v4;
-
-
-/***/ }),
-/* 136 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-let {
-    attachDocument
-} = __webpack_require__(129);
-
-let {
-    isNode
-} = __webpack_require__(119);
-
-let {
-    flat, forEach
-} = __webpack_require__(120);
-
-let reduceNode = __webpack_require__(128);
-
-/**
- * @param parentNode
- *      the dom node used hook node we rendered
- */
-module.exports = (kabaneryRoots, parentNode) => {
-    kabaneryRoots = flat(kabaneryRoots);
-
-    forEach(kabaneryRoots, (item) => {
-        item = reduceNode(item);
-        if (isNode(item)) {
-            parentNode.appendChild(item);
-        }
-    });
-
-    // attach to document
-    attachDocument(getDoc(parentNode));
-};
-
-let getDoc = (node) => {
-    while (node.parentNode) {
-        node = node.parentNode;
-    }
-    return node;
-};
-
-
-/***/ }),
-/* 137 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-let {
-    styles
-} = __webpack_require__(122);
-
-let container = {
-    position: 'relative',
-    boxSizing: 'border-box',
-    margin: 0,
-    padding: 0,
-    border: 0,
-    borderRadius: 0,
-    overflow: 'auto'
-};
-
-let fullParentHeight = {
-    height: '100%'
-};
-
-let fullParentWidth = {
-    width: '100%'
-};
-
-let fullWindow = styles(container, {
-        position: 'fixed',
-        left: 0,
-        top: 0,
-    },
-    fullParentWidth, fullParentHeight);
-
-let fullParent = styles(container, fullParentWidth, fullParentHeight);
-
-let flat = {
-    appearance: 'none',
-    '-webkit-appearance': 'none',
-    '-moz-appearance': 'none',
-    boxShadow: 'none',
-    borderRadius: 'none',
-    border: 0
-};
-
-module.exports = {
-    fullWindow,
-    fullParent,
-    fullParentWidth,
-    fullParentHeight,
-    container,
-    flat
-};
-
-
-/***/ }),
-/* 138 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-/**
- *
- * @readme-quick-run
- *
- * ## test tar=js r_c=streamTokenSpliter
- *
- * let {
- *     parser, WAIT, QUIT, MATCH
- * } = streamTokenSpliter;
-
- * let spliter = parser([{
- *     priority: 1,
- *     match: (prefix) => {
- *         if (/^\w*$/.test(prefix)) return MATCH;
- *         return QUIT;
- *     },
- *     name: 'word'
- * }, {
- *     priority: 0,
- *     match: (prefix) => {
- *         if (/^.$/.test(prefix)) return MATCH;
- *         return QUIT;
- *     },
- *     name: 'trash'
- * }]);
- *
- * let tokens1 = spliter('today=is __'); // chunk1
- * let tokens2 = spliter('a good day'); // chunk2
- * let tokens3 = spliter(null); // null means end of stream
- *
- * console.log(tokens1);
- * console.log('\n');
- * console.log(tokens2);
- * console.log('\n');
- * console.log(tokens3);
- */
-module.exports = __webpack_require__(178);
-
-
-/***/ }),
-/* 139 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-let {
-    isObject
-} = __webpack_require__(119);
-
-/**
- * basic action types and compose actions
- *
- * action = {
- *   actionType
- * }
- */
-
-const __basic_action_type__ = '7e942534-ea8b-4c75-90fd-705aec328d00';
-
-const LEFT_TYPE = 'left',
-    RANGE_TYPE = 'range',
-    UNION_TYPE = 'union',
-    NORMAL_TYPE = 'normal',
-    EPSILON_TYPE = 'epsilon';
-
-let toAction = (v) => {
-    if (isAction(v)) return v;
-    if (v === null) return {
-        content: v,
-        actionType: EPSILON_TYPE,
-        __basic_action_type__
-
-    };
-    return {
-        content: v,
-        actionType: NORMAL_TYPE,
-        __basic_action_type__
-    };
-};
-
-let left = () => {
-    return {
-        actionType: LEFT_TYPE,
-        __basic_action_type__
-    };
-};
-
-let range = (start, end) => {
-    return {
-        actionType: RANGE_TYPE,
-        start,
-        end,
-        __basic_action_type__
-    };
-};
-
-// union two actions to get a new action
-let union = (...actions) => {
-    for (let i = 0; i < actions.length; i++) {
-        let action = actions[i];
-        if (!isAction(action)) {
-            actions[i] = toAction(action);
-        }
-    }
-
-    return {
-        actionType: UNION_TYPE,
-        actions,
-        __basic_action_type__
-    };
-};
-
-let isAction = (v) => {
-    return isObject(v) && v.__basic_action_type__ === __basic_action_type__;
-};
-
-let isLeftAction = (v) => isAction(v) && v.actionType === LEFT_TYPE;
-
-let isRangeAction = (v) => isAction(v) && v.actionType === RANGE_TYPE;
-
-let isUnionAction = (v) => isAction(v) && v.actionType === UNION_TYPE;
-
-let isNormalAction = (v) => isAction(v) && v.actionType === NORMAL_TYPE;
-
-let isEpsilonAction = (v) => isAction(v) && v.actionType === EPSILON_TYPE;
-
-module.exports = {
-    isAction,
-    isLeftAction,
-    isRangeAction,
-    isUnionAction,
-    isNormalAction,
-    isEpsilonAction,
-
-    left,
-    range,
-    toAction,
-    union
-};
-
-
-/***/ }),
-/* 140 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-let {
-    isObject, funType, or, isString, isFalsy, likeArray
-} = __webpack_require__(119);
-
-let iterate = __webpack_require__(141);
-
-let {
-    map, reduce, find, findIndex, forEach, filter, any, exist, compact, reverse, overArgs
-} = __webpack_require__(183);
-
-let contain = (list, item, fopts) => findIndex(list, item, fopts) !== -1;
-
-let difference = (list1, list2, fopts) => {
-    return reduce(list1, (prev, item) => {
-        if (!contain(list2, item, fopts) &&
-            !contain(prev, item, fopts)) {
-            prev.push(item);
-        }
-        return prev;
-    }, []);
-};
-
-let union = (list1, list2, fopts) => deRepeat(list2, fopts, deRepeat(list1, fopts));
-
-let mergeMap = (map1 = {}, map2 = {}) => reduce(map2, setValueKey, reduce(map1, setValueKey, {}));
-
-let setValueKey = (obj, value, key) => {
-    obj[key] = value;
-    return obj;
-};
-
-let interset = (list1, list2, fopts) => {
-    return reduce(list1, (prev, cur) => {
-        if (contain(list2, cur, fopts)) {
-            prev.push(cur);
-        }
-        return prev;
-    }, []);
-};
-
-let deRepeat = (list, fopts, init = []) => {
-    return reduce(list, (prev, cur) => {
-        if (!contain(prev, cur, fopts)) {
-            prev.push(cur);
-        }
-        return prev;
-    }, init);
-};
-
-/**
- * a.b.c
- */
-let get = funType((sandbox, name = '') => {
-    name = name.trim();
-    let parts = !name ? [] : name.split('.');
-    return reduce(parts, getValue, sandbox, invertLogic);
-}, [
-    isObject,
-    or(isString, isFalsy)
-]);
-
-let getValue = (obj, key) => obj[key];
-
-let invertLogic = v => !v;
-
-let delay = (time) => new Promise((resolve) => {
-    setTimeout(resolve, time);
-});
-
-let flat = (list) => {
-    if (likeArray(list) && !isString(list)) {
-        return reduce(list, (prev, item) => {
-            prev = prev.concat(flat(item));
-            return prev;
-        }, []);
-    } else {
-        return [list];
-    }
-};
-
-module.exports = {
-    flat,
-    contain,
-    difference,
-    union,
-    interset,
-    map,
-    reduce,
-    iterate,
-    find,
-    findIndex,
-    deRepeat,
-    forEach,
-    filter,
-    any,
-    exist,
-    get,
-    delay,
-    mergeMap,
-    compact,
-    reverse,
-    overArgs
-};
-
-
-/***/ }),
-/* 141 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-let {
-    isPromise, likeArray, isObject, funType, isFunction, isUndefined, or, isNumber, isFalsy, isReadableStream, mapType
-} = __webpack_require__(119);
-
-/**
- * @param opts
- *      preidcate: chose items to iterate
- *      limit: when to stop iteration
- *      transfer: transfer item
- *      output
- *      def: default result
- */
-let iterate = funType((domain, opts = {}) => {
-    domain = domain || [];
-    if (isPromise(domain)) {
-        return domain.then(list => {
-            return iterate(list, opts);
-        });
-    }
-    return iterateList(domain, opts);
-}, [
-    or(isPromise, isObject, isFunction, isFalsy),
-    or(isUndefined, mapType({
-        predicate: or(isFunction, isFalsy),
-        transfer: or(isFunction, isFalsy),
-        output: or(isFunction, isFalsy),
-        limit: or(isUndefined, isNumber, isFunction)
-    }))
-]);
-
-let iterateList = (domain, opts) => {
-    opts = initOpts(opts, domain);
-
-    let rets = opts.def;
-    let count = 0; // iteration times
-
-    if (isReadableStream(domain)) {
-        let index = -1;
-
-        return new Promise((resolve, reject) => {
-            domain.on('data', (chunk) => {
-                // TODO try cache error
-                let itemRet = iterateItem(chunk, domain, ++index, count, rets, opts);
-                rets = itemRet.rets;
-                count = itemRet.count;
-                if (itemRet.stop) {
-                    resolve(rets);
-                }
-            });
-            domain.on('end', () => {
-                resolve(rets);
-            });
-            domain.on('error', (err) => {
-                reject(err);
-            });
-        });
-    } else if (likeArray(domain)) {
-        for (let i = 0; i < domain.length; i++) {
-            let item = domain[i];
-            let itemRet = iterateItem(item, domain, i, count, rets, opts);
-            rets = itemRet.rets;
-            count = itemRet.count;
-            if (itemRet.stop) return rets;
-        }
-    } else if (isObject(domain)) {
-        for (let name in domain) {
-            let item = domain[name];
-            let itemRet = iterateItem(item, domain, name, count, rets, opts);
-            rets = itemRet.rets;
-            count = itemRet.count;
-            if (itemRet.stop) return rets;
-        }
-    }
-
-    return rets;
-};
-
-let initOpts = (opts, domain) => {
-    let {
-        predicate, transfer, output, limit
-    } = opts;
-
-    opts.predicate = predicate || truthy;
-    opts.transfer = transfer || id;
-    opts.output = output || toList;
-    if (limit === undefined) limit = domain && domain.length;
-    limit = opts.limit = stopCondition(limit);
-    return opts;
-};
-
-let iterateItem = (item, domain, name, count, rets, {
-    predicate, transfer, output, limit
-}) => {
-    if (limit(rets, item, name, domain, count)) {
-        // stop
-        return {
-            stop: true,
-            count,
-            rets
-        };
-    }
-
-    if (predicate(item)) {
-        rets = output(rets, transfer(item, name, domain, rets), name, domain);
-        count++;
-    }
-    return {
-        stop: false,
-        count,
-        rets
-    };
-};
-
-let stopCondition = (limit) => {
-    if (isUndefined(limit)) {
-        return falsy;
-    } else if (isNumber(limit)) {
-        return (rets, item, name, domain, count) => count >= limit;
-    } else {
-        return limit;
-    }
-};
-
-let toList = (prev, v) => {
-    prev.push(v);
-    return prev;
-};
-
-let truthy = () => true;
-
-let falsy = () => false;
-
-let id = v => v;
-
-module.exports = {
-    iterate
-};
-
-
-/***/ }),
-/* 142 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-let assembleToken = (tokenType, prefix) => {
-    return {
-        tokenType,
-        name: tokenType.name,
-        text: prefix
-    };
-};
-
-module.exports = {
-    assembleToken
-};
-
-
-/***/ }),
-/* 143 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-module.exports = {
-    END_SYMBOL: '$',
-    EXPAND_START_SYMBOL: 'S`',
-    EPSILON: null
-};
-
-
-/***/ }),
-/* 144 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-let {
-    isPromise, likeArray, isObject, funType, isFunction, isUndefined, or, isNumber, isFalsy, isReadableStream, mapType
-} = __webpack_require__(119);
-
-/**
- * @param opts
- *      preidcate: chose items to iterate
- *      limit: when to stop iteration
- *      transfer: transfer item
- *      output
- *      def: default result
- */
-let iterate = funType((domain, opts = {}) => {
-    domain = domain || [];
-    if (isPromise(domain)) {
-        return domain.then(list => {
-            return iterate(list, opts);
-        });
-    }
-    return iterateList(domain, opts);
-}, [
-    or(isPromise, isObject, isFunction, isFalsy),
-    or(isUndefined, mapType({
-        predicate: or(isFunction, isFalsy),
-        transfer: or(isFunction, isFalsy),
-        output: or(isFunction, isFalsy),
-        limit: or(isUndefined, isNumber, isFunction)
-    }))
-]);
-
-let iterateList = (domain, opts) => {
-    opts = initOpts(opts, domain);
-
-    let rets = opts.def;
-    let count = 0; // iteration times
-
-    if (isReadableStream(domain)) {
-        let index = -1;
-
-        return new Promise((resolve, reject) => {
-            domain.on('data', (chunk) => {
-                // TODO try cache error
-                let itemRet = iterateItem(chunk, domain, ++index, count, rets, opts);
-                rets = itemRet.rets;
-                count = itemRet.count;
-                if (itemRet.stop) {
-                    resolve(rets);
-                }
-            });
-            domain.on('end', () => {
-                resolve(rets);
-            });
-            domain.on('error', (err) => {
-                reject(err);
-            });
-        });
-    } else if (likeArray(domain)) {
-        for (let i = 0; i < domain.length; i++) {
-            let item = domain[i];
-            let itemRet = iterateItem(item, domain, i, count, rets, opts);
-            rets = itemRet.rets;
-            count = itemRet.count;
-            if (itemRet.stop) return rets;
-        }
-    } else if (isObject(domain)) {
-        for (let name in domain) {
-            let item = domain[name];
-            let itemRet = iterateItem(item, domain, name, count, rets, opts);
-            rets = itemRet.rets;
-            count = itemRet.count;
-            if (itemRet.stop) return rets;
-        }
-    }
-
-    return rets;
-};
-
-let initOpts = (opts, domain) => {
-    let {
-        predicate, transfer, output, limit
-    } = opts;
-
-    opts.predicate = predicate || truthy;
-    opts.transfer = transfer || id;
-    opts.output = output || toList;
-    if (limit === undefined) limit = domain && domain.length;
-    limit = opts.limit = stopCondition(limit);
-    return opts;
-};
-
-let iterateItem = (item, domain, name, count, rets, {
-    predicate, transfer, output, limit
-}) => {
-    if (limit(rets, item, name, domain, count)) {
-        // stop
-        return {
-            stop: true,
-            count,
-            rets
-        };
-    }
-
-    if (predicate(item)) {
-        rets = output(rets, transfer(item, name, domain, rets), name, domain);
-        count++;
-    }
-    return {
-        stop: false,
-        count,
-        rets
-    };
-};
-
-let stopCondition = (limit) => {
-    if (isUndefined(limit)) {
-        return falsy;
-    } else if (isNumber(limit)) {
-        return (rets, item, name, domain, count) => count >= limit;
-    } else {
-        return limit;
-    }
-};
-
-let toList = (prev, v) => {
-    prev.push(v);
-    return prev;
-};
-
-let truthy = () => true;
-
-let falsy = () => false;
-
-let id = v => v;
-
-module.exports = {
-    iterate
-};
-
-
-/***/ }),
-/* 145 */
-/***/ (function(module, exports) {
-
-let getProductionId = (production) => {
-    return `${production[0]} := ${production[1].join(' ')}`;
-};
-
-// ignore whitespace
-let processTokens = (rawTokens) => {
-    let tokens = [];
-    for (let i = 0; i < rawTokens.length; i++) {
-        let {
-            text,
-            tokenType
-        } = rawTokens[i];
-
-        let name = tokenType.name;
-
-        if (name !== 'whitespace') { // ignore white space
-            tokens.push({
-                text,
-                name
-            });
-        }
-    }
-
-    return tokens;
-};
-
-let isObject = v => v && typeof v === 'object';
-
-let isFunction = v => typeof v === 'function';
-
-let isString = v => typeof v === 'string';
-
-module.exports = {
-    getProductionId,
-    processTokens,
-    isObject,
-    isFunction,
-    isString
-};
-
-
-/***/ }),
 /* 146 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -12750,12 +12752,12 @@ module.exports = (viewFun, options) => lumineViewer(viewFun)(options);
 
 let {
     view
-} = __webpack_require__(125);
+} = __webpack_require__(12);
 let steadyTheme = __webpack_require__(166);
 let {
     deepMergeMap,
     resolveFnValue
-} = __webpack_require__(122);
+} = __webpack_require__(10);
 let ClassTable = __webpack_require__(171);
 let {
     Signal
@@ -12882,22 +12884,22 @@ let {
     isKabaneryNode,
     cn,
     parseStyle
-} = __webpack_require__(126);
+} = __webpack_require__(26);
 
 let plugs = __webpack_require__(152);
 
 let view = __webpack_require__(155);
 
-let mount = __webpack_require__(136);
+let mount = __webpack_require__(52);
 
 let N = __webpack_require__(165);
 
-let reduceNode = __webpack_require__(128);
+let reduceNode = __webpack_require__(28);
 
 let {
     dispatchEvent,
     clearEvents
-} = __webpack_require__(129);
+} = __webpack_require__(29);
 
 module.exports = {
     n,
@@ -12926,7 +12928,7 @@ module.exports = {
 "use strict";
 
 
-let iterate = __webpack_require__(133);
+let iterate = __webpack_require__(49);
 
 let defauls = {
     eq: (v1, v2) => v1 === v2
@@ -13040,7 +13042,7 @@ let {
     likeArray,
     isNumber,
     isBool
-} = __webpack_require__(119);
+} = __webpack_require__(1);
 
 let parseArgs = (args, {
     doParseStyle = true
@@ -13130,13 +13132,13 @@ module.exports = parseArgs;
 
 let {
     isString
-} = __webpack_require__(119);
+} = __webpack_require__(1);
 
-let parseStyle = __webpack_require__(134);
+let parseStyle = __webpack_require__(50);
 
 let {
     mergeMap
-} = __webpack_require__(120);
+} = __webpack_require__(4);
 
 const ITEM_REG = /([\w-]+)\s*=\s*(([\w-]+)|('.*?')|(".*?"))/;
 
@@ -13220,7 +13222,7 @@ module.exports = {
 
 let {
     get, set
-} = __webpack_require__(123);
+} = __webpack_require__(15);
 
 module.exports = (obj, path) => (tagName, attributes, childExp) => {
     let value = get(obj, path, '');
@@ -13279,23 +13281,23 @@ let wrapEventHandler = (fun, catcher) => {
 
 let {
     set
-} = __webpack_require__(123);
+} = __webpack_require__(15);
 
 let {
     isObject,
     isFunction,
     likeArray
-} = __webpack_require__(119);
+} = __webpack_require__(1);
 
 let {
     forEach
-} = __webpack_require__(120);
+} = __webpack_require__(4);
 
 let replace = __webpack_require__(156);
 
-let reduceNode = __webpack_require__(128);
+let reduceNode = __webpack_require__(28);
 
-let mount = __webpack_require__(136);
+let mount = __webpack_require__(52);
 
 /**
  * render function: (data) => node
@@ -13498,19 +13500,19 @@ module.exports = View;
 
 let {
     toArray
-} = __webpack_require__(123);
+} = __webpack_require__(15);
 
 let {
     isNode
-} = __webpack_require__(119);
+} = __webpack_require__(1);
 
 let {
     forEach
-} = __webpack_require__(120);
+} = __webpack_require__(4);
 
 let {
     eventMapHook
-} = __webpack_require__(127);
+} = __webpack_require__(27);
 
 let applyAttibutes = __webpack_require__(159);
 
@@ -13671,7 +13673,7 @@ if (!rng) {
 
 module.exports = rng;
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(22)))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(19)))
 
 /***/ }),
 /* 158 */
@@ -13715,11 +13717,11 @@ let {
 
 let {
     hasOwnProperty
-} = __webpack_require__(123);
+} = __webpack_require__(15);
 
 let {
     forEach
-} = __webpack_require__(120);
+} = __webpack_require__(4);
 
 let applyAttibutes = (node, newNode) => {
     // attributes
@@ -13960,7 +13962,7 @@ module.exports = startMomenter;
 
 let {
     isNode
-} = __webpack_require__(119);
+} = __webpack_require__(1);
 
 const svgNS = 'http://www.w3.org/2000/svg';
 
@@ -14007,13 +14009,13 @@ module.exports = {
 
 let {
     contain
-} = __webpack_require__(120);
+} = __webpack_require__(4);
 
 let {
     eventMapHook,
     globalEventTypePrefix,
     stopPropagationFlag
-} = __webpack_require__(127);
+} = __webpack_require__(27);
 
 module.exports = () => {
     let docs = [];
@@ -14163,15 +14165,15 @@ let getGlobalEventTypeId = (type) => `${globalEventTypePrefix}${type}`;
 
 let {
     n
-} = __webpack_require__(126);
+} = __webpack_require__(26);
 
 let {
     isArray, isFunction, isObject
-} = __webpack_require__(119);
+} = __webpack_require__(1);
 
 let {
     map
-} = __webpack_require__(120);
+} = __webpack_require__(4);
 
 module.exports = (...args) => {
     let tagName = args[0],
@@ -14257,9 +14259,9 @@ module.exports = base({
 
 let {
     styles
-} = __webpack_require__(122);
+} = __webpack_require__(10);
 
-let layout = __webpack_require__(137);
+let layout = __webpack_require__(53);
 let Bulk = __webpack_require__(168);
 let Actions = __webpack_require__(169);
 let Widget = __webpack_require__(170);
@@ -14293,9 +14295,9 @@ module.exports = (basics, custom = {}) => {
 
 let {
     styles
-} = __webpack_require__(122);
+} = __webpack_require__(10);
 
-let layout = __webpack_require__(137);
+let layout = __webpack_require__(53);
 
 let {
     container
@@ -14379,7 +14381,7 @@ module.exports = (basics) => {
 
 let {
     styles
-} = __webpack_require__(122);
+} = __webpack_require__(10);
 
 module.exports = (basics, layout, bulks) => {
     let {
@@ -14457,13 +14459,13 @@ module.exports = (basics, layout, bulks) => {
 
 let {
     isMapObject
-} = __webpack_require__(122);
+} = __webpack_require__(10);
 
 let {
     mount,
     n,
     parseStyle
-} = __webpack_require__(125);
+} = __webpack_require__(12);
 
 const VIEW_CLASS_PREFIX = 'kabanery-lumine';
 
@@ -14671,7 +14673,7 @@ module.exports = (jsonData, {
 "use strict";
 
 
-let uuidv4 = __webpack_require__(135);
+let uuidv4 = __webpack_require__(51);
 
 let autoId = () => {
     let time = new Date().getTime(); // used to sort by time
@@ -14756,7 +14758,7 @@ let {
     T_FUNCTION,
     T_NODE_NAME,
     T_NODE_NAME_VARIABLE
-} = __webpack_require__(132);
+} = __webpack_require__(32);
 
 let executeAST = (ast, {
     queryByPath,
@@ -14908,14 +14910,14 @@ module.exports = {
 "use strict";
 
 
-let streamTokenSpliter = __webpack_require__(138);
+let streamTokenSpliter = __webpack_require__(54);
 let {
     LR
 } = __webpack_require__(187);
 let {
     getProductionId,
     processTokens,
-} = __webpack_require__(145);
+} = __webpack_require__(61);
 let tokenTypes = __webpack_require__(198);
 let {
     ACTION,
@@ -14965,7 +14967,7 @@ let {
     T_FUNCTION,
     T_NODE_NAME,
     T_NODE_NAME_VARIABLE
-} = __webpack_require__(132);
+} = __webpack_require__(32);
 
 module.exports = () => {
     let tokenSpliter = streamTokenSpliter.parser(tokenTypes);
@@ -15180,21 +15182,21 @@ module.exports = () => {
 
 let {
     isString, funType, listType, isFunction, mapType, isFalsy, isNumber, or
-} = __webpack_require__(119);
+} = __webpack_require__(1);
 
 let {
     WAIT, MATCH, QUIT
-} = __webpack_require__(130);
+} = __webpack_require__(30);
 
 let {
     stateGraphDSL
-} = __webpack_require__(124);
+} = __webpack_require__(16);
 
 let buildFSM = __webpack_require__(184);
 
 let {
     map
-} = __webpack_require__(120);
+} = __webpack_require__(4);
 
 let {
     getMatch
@@ -15207,7 +15209,7 @@ let {
 
 let {
     assembleToken
-} = __webpack_require__(142);
+} = __webpack_require__(58);
 
 /**
  *
@@ -15544,7 +15546,7 @@ module.exports = {
 "use strict";
 
 
-let actionDSL = __webpack_require__(139);
+let actionDSL = __webpack_require__(55);
 
 let {
     isNormalAction, isRangeAction, isUnionAction, isLeftAction, isEpsilonAction
@@ -15564,7 +15566,7 @@ let {
 
 let {
     mergeMap
-} = __webpack_require__(140);
+} = __webpack_require__(56);
 
 let transitionMaper = (graph) => {
     let transitions = {};
@@ -15778,9 +15780,9 @@ module.exports = mergeMap(actionDSL, {
 
 let {
     isString, isObject
-} = __webpack_require__(119);
+} = __webpack_require__(1);
 
-let actionDSL = __webpack_require__(139);
+let actionDSL = __webpack_require__(55);
 
 let {
     toAction
@@ -15788,7 +15790,7 @@ let {
 
 let {
     mergeMap
-} = __webpack_require__(140);
+} = __webpack_require__(56);
 
 /**
  * graph definition DSL
@@ -15936,11 +15938,11 @@ module.exports = mergeMap(actionDSL, {
 
 let {
     iterate
-} = __webpack_require__(141);
+} = __webpack_require__(57);
 
 let {
     isFunction
-} = __webpack_require__(119);
+} = __webpack_require__(1);
 
 let defauls = {
     eq: (v1, v2) => v1 === v2
@@ -16063,7 +16065,7 @@ const START_STATE = '__start__state__';
 
 let {
     stateGraphDSL, DFA
-} = __webpack_require__(124);
+} = __webpack_require__(16);
 
 /**
  * build a fda to do the matching work
@@ -16101,11 +16103,11 @@ module.exports = (stateMap, accepts) => {
 
 let {
     isString, isFunction
-} = __webpack_require__(119);
+} = __webpack_require__(1);
 
 let {
     MATCH, WAIT, QUIT
-} = __webpack_require__(130);
+} = __webpack_require__(30);
 
 let stringMatch = (word) => (prefix) => {
     if (word === prefix) return MATCH;
@@ -16133,11 +16135,11 @@ module.exports = {
 
 let {
     WAIT, MATCH
-} = __webpack_require__(130);
+} = __webpack_require__(30);
 
 let {
     assembleToken
-} = __webpack_require__(142);
+} = __webpack_require__(58);
 
 let filterTypes = (nextLetter, prefix, tokenTypes) => {
     let parts = [],
@@ -16271,7 +16273,7 @@ let LR1Table = __webpack_require__(192);
 let ctxFreeGrammer = __webpack_require__(197);
 let {
     forEach
-} = __webpack_require__(121);
+} = __webpack_require__(8);
 
 /**
  * just used for testing
@@ -16326,7 +16328,7 @@ module.exports = {
 
 let {
     END_SYMBOL, EXPAND_START_SYMBOL
-} = __webpack_require__(143);
+} = __webpack_require__(59);
 
 let {
     initAST,
@@ -16537,7 +16539,7 @@ let getNextInputToken = (configuration) => {
 
 let {
     map
-} = __webpack_require__(121);
+} = __webpack_require__(8);
 
 const TERMINAL_TYPE = 'terminal';
 const NONE_TERMINAL_TYPE = 'none-terminal';
@@ -16624,11 +16626,11 @@ module.exports = {
 
 let {
     iterate
-} = __webpack_require__(144);
+} = __webpack_require__(60);
 
 let {
     isFunction
-} = __webpack_require__(119);
+} = __webpack_require__(1);
 
 let defauls = {
     eq: (v1, v2) => v1 === v2
@@ -16750,14 +16752,14 @@ module.exports = {
 let LR1CanonicalCollection = __webpack_require__(193);
 let {
     forEach, findIndex
-} = __webpack_require__(121);
+} = __webpack_require__(8);
 let GO = __webpack_require__(194);
 let {
     LR1Itemer
 } = __webpack_require__(195);
 let {
     sameClosure
-} = __webpack_require__(131);
+} = __webpack_require__(31);
 
 module.exports = (grammer) => {
     let {
@@ -16834,10 +16836,10 @@ let getStateIndex = (C, I) => findIndex(C, I, {
 
 let {
     buildClosure
-} = __webpack_require__(131);
+} = __webpack_require__(31);
 let {
     reduce
-} = __webpack_require__(121);
+} = __webpack_require__(8);
 
 /**
  * input: grammer G
@@ -16915,11 +16917,11 @@ let getGoToSymbolsSet = (symbols, I, go) => {
 
 let {
     reduce, filter
-} = __webpack_require__(121);
+} = __webpack_require__(8);
 
 let {
     buildClosure
-} = __webpack_require__(131);
+} = __webpack_require__(31);
 
 /**
  * jump
@@ -16992,7 +16994,7 @@ let First = __webpack_require__(196);
 
 let {
     union, reduce, filter, flat, map
-} = __webpack_require__(121);
+} = __webpack_require__(8);
 
 let LR1Itemer = (grammer) => {
     let {
@@ -17187,11 +17189,11 @@ module.exports = {
 
 let {
     contain, union, reduce, difference, forEach
-} = __webpack_require__(121);
+} = __webpack_require__(8);
 
 let {
     isArray
-} = __webpack_require__(119);
+} = __webpack_require__(1);
 
 module.exports = (grammer) => {
     // cache first set
@@ -17313,7 +17315,7 @@ module.exports = (grammer) => {
 
 const {
     END_SYMBOL, EXPAND_START_SYMBOL, EPSILON
-} = __webpack_require__(143);
+} = __webpack_require__(59);
 
 /**
  * context free grammer is read-only
@@ -17412,9 +17414,9 @@ let {
 
 let {
     buildFSM
-} = __webpack_require__(138);
+} = __webpack_require__(54);
 
-let FSM = __webpack_require__(124);
+let FSM = __webpack_require__(16);
 let {
     stateGraphDSL
 } = FSM;
@@ -17551,7 +17553,7 @@ module.exports = [
 
 let {
     stateGraphDSL
-} = __webpack_require__(124);
+} = __webpack_require__(16);
 
 let {
     g, c, union, range, sequence, circle, left, repeat
@@ -17620,7 +17622,7 @@ let {
     isObject,
     isFunction,
     isString
-} = __webpack_require__(145);
+} = __webpack_require__(61);
 
 let {
     T_ASSIGN,
@@ -17631,7 +17633,7 @@ let {
     T_NODE_NAME_VARIABLE,
 
     A_DEFAULT
-} = __webpack_require__(132);
+} = __webpack_require__(32);
 
 /**
  *
@@ -17758,7 +17760,7 @@ module.exports = {
 let {
     n,
     parseArgs
-} = __webpack_require__(125);
+} = __webpack_require__(12);
 
 module.exports = (...args) => {
     let tagName = args[0];
@@ -17791,7 +17793,7 @@ module.exports = (...args) => {
 let line = __webpack_require__(204);
 let {
     n
-} = __webpack_require__(125);
+} = __webpack_require__(12);
 
 module.exports = ({
     length = 10,
@@ -17847,7 +17849,7 @@ module.exports = ({
 
 let {
     n
-} = __webpack_require__(125);
+} = __webpack_require__(12);
 
 module.exports = ({
     color = 'black',

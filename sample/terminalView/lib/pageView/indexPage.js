@@ -51,7 +51,7 @@ README.md    node_modules sample       test`
                 user: 'root',
                 cwd: '/home/root',
                 command: 'pwd',
-                output: '/home/root'
+                output: '/home/root/.............................................................................'
             }]
         })
     ]);

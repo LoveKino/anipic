@@ -47,7 +47,9 @@ const renderCommand = (command, props) => {
                 style: {
                     padding: '0 0 0 5',
                     margin: '1 0 1 0',
-                    fontSize: 14
+                    fontSize: 14,
+                    wordWrap: 'break-word',
+                    whiteSpace: 'pre-wrap'
                 }
             }, command.output)
         ])
