@@ -1,6 +1,8 @@
 const promisify = require('es6-promisify');
 const fs = require('fs');
 const child_process = require('child_process');
+const GIFEncoder = require('gifencoder');
+const Canvas = require('canvas');
 
 const writeFile = promisify(fs.writeFile);
 
@@ -37,7 +39,34 @@ const exec = (cmd, options = {}) => {
     });
 };
 
+const imagesToGif = (imageDatas, filePath, {
+    width = 320,
+    height = 240,
+    repeat = true,
+    delay = 2000,
+    quality = 10
+} = {}) => {
+    var encoder = new GIFEncoder(width, height);
+    encoder.createReadStream().pipe(fs.createWriteStream(filePath));
+    encoder.start();
+    encoder.setRepeat(repeat ? 0 : -1);
+    encoder.setDelay(delay);
+    encoder.setQuality(quality);
+
+    imageDatas.forEach((data) => {
+        let canvas = new Canvas(width, height);
+        let ctx = canvas.getContext('2d');
+        let img = new Canvas.Image;
+        img.src = data;
+        ctx.drawImage(img, 0, 0, width, height);
+        encoder.addFrame(ctx);
+    });
+
+    return encoder.finish();
+};
+
 module.exports = {
     exec,
-    base64ToPNG
+    base64ToPNG,
+    imagesToGif
 };

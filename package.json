@@ -4,7 +4,7 @@
   "description": "Animation picture",
   "main": "index.js",
   "scripts": {
-    "test": "mocha test/**/*.js"
+    "test": "mocha test/**/*.js -t 1000000"
   },
   "repository": {
     "type": "git",
@@ -24,9 +24,11 @@
     "mocha": "^4.0.1"
   },
   "dependencies": {
-    "browser-js-env": "0.0.11",
+    "browser-js-env": "0.0.12",
+    "canvas": "^1.6.7",
     "dom-to-image": "^2.6.0",
     "es6-promisify": "^5.0.0",
+    "gifencoder": "^1.1.0",
     "kabanery-lumine": "0.0.48"
   }
 }

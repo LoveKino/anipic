@@ -9,7 +9,7 @@ const renderCommand = (command, props) => {
         n('div', [
             n('div', {
                 style: props.style.userPrompt
-            }, command.user),
+            }, command.user || 'root'),
 
             n('div', {
                 style: props.style.cwdPrompt
