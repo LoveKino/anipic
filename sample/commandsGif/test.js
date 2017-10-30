@@ -1,10 +1,13 @@
 'use strict';
 
 const {
-    executeCommandsWithImages,
+    CommandCapture,
     imagesToGif
 } = require('../..');
 
-executeCommandsWithImages(['ls', 'pwd']).then(({
-    images
-}) => imagesToGif(images, 'myanimated.gif'));
+let commandCapture = new CommandCapture();
+commandCapture.exec('ls').then(() => {
+    return commandCapture.exec('pwd');
+}).then(() => {
+    imagesToGif(commandCapture.images, 'myanimated.gif');
+});

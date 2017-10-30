@@ -13,7 +13,7 @@ const OS = require('os');
 
 const executeCommandWithImages = (command, options, {
     executor,
-    captureOptins,
+    captureOptions,
     history = []
 } = {}) => {
     executor = executor || exec;
@@ -25,7 +25,7 @@ const executeCommandWithImages = (command, options, {
         cwd,
         command,
         output: ''
-    }]), captureOptins).then((startImg) => {
+    }]), captureOptions).then((startImg) => {
         return executor(command, options).then((commandResult) => {
             let output = commandResult.stdout || commandResult.stderr;
             let commandState = {
@@ -54,7 +54,7 @@ const executeCommandWithImages = (command, options, {
 
 const executeCommandsWithImages = (commands, options, {
     executor,
-    captureOptins,
+    captureOptions,
     history = []
 } = {}) => {
     if (!commands.length) {
@@ -66,12 +66,12 @@ const executeCommandsWithImages = (commands, options, {
 
     return executeCommandWithImages(commands[0], options, {
         executor,
-        captureOptins,
+        captureOptions,
         history
     }).then((item) => {
         return executeCommandsWithImages(commands.slice(1), options, {
             executor,
-            captureOptins,
+            captureOptions,
             history: history.concat([item.commandState])
         }).then((prev) => {
             return {
@@ -82,9 +82,36 @@ const executeCommandsWithImages = (commands, options, {
     });
 };
 
+let CommandCapture = function() {
+    this.history = [];
+    this.images = [];
+};
+
+CommandCapture.prototype.exec = function(command, options, {
+    executor,
+    captureOptions
+} = {}) {
+    let self = this;
+    return executeCommandWithImages(command, options, {
+        executor,
+        captureOptions,
+        history: self.history
+    }).then(({
+        images,
+        commandResult,
+        commandState
+    }) => {
+        self.images = self.images.concat(images);
+        self.history.push(commandState);
+
+        return commandResult;
+    });
+};
+
 module.exports = {
     capture,
     imagesToGif,
+    CommandCapture,
     executeCommandWithImages,
     executeCommandsWithImages
 };
