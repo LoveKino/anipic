@@ -6,7 +6,6 @@ let {
 let pageSignalActionMap = require('./pageSignalAction');
 let pageViewMap = require('./pageView');
 
-
 SPA({
     
     pageViewMap,
