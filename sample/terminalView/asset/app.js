@@ -11686,6 +11686,42 @@ README.md    node_modules sample       test`
                 cwd: '/home/root',
                 command: 'pwd',
                 output: '/home/root/.............................................................................'
+            }, {
+                user: 'root',
+                cwd: '/home/root',
+                command: 'npm i',
+                output: `up to date in 5.365s
+                npm WARN docway-cli-sample-api-quickstart@0.0.1 No description
+                npm WARN docway-cli-sample-api-quickstart@0.0.1 No repository field.
+                
+                up to date in 5.536s
+                npm WARN docway-cli-sample-cli-options@0.0.1 No description
+                npm WARN docway-cli-sample-cli-options@0.0.1 No repository field.
+                
+                up to date in 5.565s
+                npm WARN docway-cli-sample-api-quickstart@0.0.1 No description
+                npm WARN docway-cli-sample-api-quickstart@0.0.1 No repository field.
+                
+                + docway@0.0.1
+                updated 1 package in 15.358s
+                npm WARN docway-cli-sample-quickstart@0.0.1 No repository field.
+                
+                + docway@0.0.1
+                updated 1 package in 18.408s
+                npm WARN docway-cli-sample-cli-options@0.0.1 No description
+                npm WARN docway-cli-sample-cli-options@0.0.1 No repository field.
+                
+                + docway@0.0.1
+                updated 1 package in 18.124s
+                ## test
+                
+                Usage: docway
+                    --config [config js file]
+                
+                
+                Options:
+                  --version   Show version number                                      [boolean]
+                  -h, --help  Show help                                                [boolean]`
             }]
         })
     ]);
@@ -12669,7 +12705,6 @@ const renderCommand = (command, props) => {
                 style: {
                     padding: '0 0 0 5',
                     margin: '1 0 1 0',
-                    fontSize: 14,
                     wordWrap: 'break-word',
                     whiteSpace: 'pre-wrap'
                 }
@@ -12680,7 +12715,11 @@ const renderCommand = (command, props) => {
 
 module.exports = lumineView(({
     props
-}) => {
+}, ctx) => {
+    // hack
+    setTimeout(() => {
+        ctx.getNode().scrollTop = ctx.getNode().scrollHeight;
+    }, 0);
     return n('div', {
         style: props.style.container
     }, [
@@ -12702,7 +12741,8 @@ module.exports = lumineView(({
                 height: 400,
                 backgroundColor: 'rgb(2, 40, 51)',
                 color: 'white',
-                fontSize: 14
+                fontSize: 12,
+                overflow: 'scroll'
             },
 
             userPrompt: {

@@ -52,6 +52,42 @@ README.md    node_modules sample       test`
                 cwd: '/home/root',
                 command: 'pwd',
                 output: '/home/root/.............................................................................'
+            }, {
+                user: 'root',
+                cwd: '/home/root',
+                command: 'npm i',
+                output: `up to date in 5.365s
+                npm WARN docway-cli-sample-api-quickstart@0.0.1 No description
+                npm WARN docway-cli-sample-api-quickstart@0.0.1 No repository field.
+                
+                up to date in 5.536s
+                npm WARN docway-cli-sample-cli-options@0.0.1 No description
+                npm WARN docway-cli-sample-cli-options@0.0.1 No repository field.
+                
+                up to date in 5.565s
+                npm WARN docway-cli-sample-api-quickstart@0.0.1 No description
+                npm WARN docway-cli-sample-api-quickstart@0.0.1 No repository field.
+                
+                + docway@0.0.1
+                updated 1 package in 15.358s
+                npm WARN docway-cli-sample-quickstart@0.0.1 No repository field.
+                
+                + docway@0.0.1
+                updated 1 package in 18.408s
+                npm WARN docway-cli-sample-cli-options@0.0.1 No description
+                npm WARN docway-cli-sample-cli-options@0.0.1 No repository field.
+                
+                + docway@0.0.1
+                updated 1 package in 18.124s
+                ## test
+                
+                Usage: docway
+                    --config [config js file]
+                
+                
+                Options:
+                  --version   Show version number                                      [boolean]
+                  -h, --help  Show help                                                [boolean]`
             }]
         })
     ]);

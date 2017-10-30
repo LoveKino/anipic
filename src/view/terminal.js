@@ -47,7 +47,6 @@ const renderCommand = (command, props) => {
                 style: {
                     padding: '0 0 0 5',
                     margin: '1 0 1 0',
-                    fontSize: 14,
                     wordWrap: 'break-word',
                     whiteSpace: 'pre-wrap'
                 }
@@ -58,7 +57,11 @@ const renderCommand = (command, props) => {
 
 module.exports = lumineView(({
     props
-}) => {
+}, ctx) => {
+    // hack
+    setTimeout(() => {
+        ctx.getNode().scrollTop = ctx.getNode().scrollHeight;
+    }, 0);
     return n('div', {
         style: props.style.container
     }, [
@@ -80,7 +83,8 @@ module.exports = lumineView(({
                 height: 400,
                 backgroundColor: 'rgb(2, 40, 51)',
                 color: 'white',
-                fontSize: 14
+                fontSize: 12,
+                overflow: 'scroll'
             },
 
             userPrompt: {
