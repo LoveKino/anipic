@@ -40,8 +40,8 @@ const exec = (cmd, options = {}) => {
 };
 
 const imagesToGif = (imageDatas, filePath, {
-    width = 320,
-    height = 240,
+    width = 600,
+    height = 400,
     repeat = true,
     delay = 2000,
     quality = 10
