@@ -6,8 +6,15 @@ const {
 } = require('../..');
 
 let commandCapture = new CommandCapture();
-commandCapture.exec('ls').then(() => {
-    return commandCapture.exec('pwd');
+let options = {
+    cwd: __dirname
+};
+commandCapture.exec('ls', options).then(() => {
+    return commandCapture.exec('pwd', options);
 }).then(() => {
-    imagesToGif(commandCapture.images, 'myanimated.gif');
+    return commandCapture.exec('cat package.json', options);
+}).then(() => {
+    return commandCapture.exec('cat test.js', options);
+}).then(() => {
+    imagesToGif(commandCapture.images, __dirname + '/myanimated.gif');
 });

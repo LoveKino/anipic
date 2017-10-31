@@ -24,7 +24,16 @@ mount(n('div', {
     })
 ]), document.body);
 
-module.exports = domtoimage.toPng(document.getElementById('view-container').childNodes[0]);
+// hack
+module.exports = new Promise((resolve) => {
+    setTimeout(() => {
+        try {
+            resolve(domtoimage.toPng(document.getElementById('view-container').childNodes[0]));
+        } catch(err) {
+            reject(err);
+        }
+    }, 0);
+});
 `, options);
     }
 };

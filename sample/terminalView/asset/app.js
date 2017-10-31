@@ -12715,11 +12715,7 @@ const renderCommand = (command, props) => {
 
 module.exports = lumineView(({
     props
-}, ctx) => {
-    // hack
-    setTimeout(() => {
-        ctx.getNode().scrollTop = ctx.getNode().scrollHeight;
-    }, 0);
+}) => {
     return n('div', {
         style: props.style.container
     }, [
@@ -12738,9 +12734,9 @@ module.exports = lumineView(({
         style: {
             container: {
                 width: 600,
-                height: 400,
+                minHeight: 400,
                 backgroundColor: 'rgb(2, 40, 51)',
-                color: 'white',
+                color: 'rgb(147, 161, 161)',
                 fontSize: 12,
                 overflow: 'scroll'
             },

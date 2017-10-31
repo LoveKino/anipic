@@ -58,7 +58,7 @@ const imagesToGif = (imageDatas, filePath, {
         let ctx = canvas.getContext('2d');
         let img = new Canvas.Image;
         img.src = data;
-        ctx.drawImage(img, 0, 0, width, height);
+        ctx.drawImage(img, 0, height - img.height, width, img.height);
         encoder.addFrame(ctx);
     });
 
