@@ -6,9 +6,10 @@ const path = require('path');
 /**
  * capture picture
  */
-let capture = (type, data, options = {
-    clean: true
-}) => {
+let capture = (type, data, options = {}) => {
+    if (options.clean === undefined) {
+        options.clean = true;
+    }
     if (type === 'terminal') {
         return browserJsEnv(`
 const n = require('kabanery-lumine/lib/util/n');

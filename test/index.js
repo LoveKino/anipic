@@ -1,5 +1,8 @@
 'use strict';
 
+const {
+    headlessOpen
+} = require('./util');
 const assert = require('assert');
 const {
     executeCommandWithImages,
@@ -8,7 +11,11 @@ const {
 
 describe('index', () => {
     it('executeCommandWithImages', () => {
-        return executeCommandWithImages('echo "123"').then(({
+        return executeCommandWithImages('echo "123"', {}, {
+            captureOptions: {
+                open: headlessOpen
+            }
+        }).then(({
             images,
             commandResult
         }) => {
@@ -18,7 +25,11 @@ describe('index', () => {
     });
 
     it('executeCommandsWithImages', () => {
-        return executeCommandsWithImages(['echo "123"']).then(({
+        return executeCommandsWithImages(['echo "123"'], {}, {
+            captureOptions: {
+                open: headlessOpen
+            }
+        }).then(({
             images,
             commandResults
         }) => {

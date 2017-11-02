@@ -41,7 +41,7 @@ const executeCommandWithImages = (command, options, {
                 cwd,
                 command: '',
                 output: ''
-            }])).then((endImg) => {
+            }]), captureOptions).then((endImg) => {
                 return {
                     images: [startImg, endImg],
                     commandResult,
@@ -82,9 +82,10 @@ const executeCommandsWithImages = (commands, options, {
     });
 };
 
-let CommandCapture = function() {
+let CommandCapture = function(captureOptions) {
     this.history = [];
     this.images = [];
+    this.captureOptions = captureOptions;
 };
 
 CommandCapture.prototype.exec = function(command, options, {
@@ -92,9 +93,11 @@ CommandCapture.prototype.exec = function(command, options, {
     captureOptions
 } = {}) {
     let self = this;
+    const captureOpts = captureOptions || self.captureOptions;
+
     return executeCommandWithImages(command, options, {
         executor,
-        captureOptions,
+        captureOptions: captureOpts,
         history: self.history
     }).then(({
         images,
